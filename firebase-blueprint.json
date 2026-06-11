@@ -1,0 +1,165 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile document containing authentication and profile details",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The full name of the user"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address of the user"
+        },
+        "profilePhoto": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL link to user's profile photo"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the user was created"
+        }
+      },
+      "required": ["name", "email", "createdAt"]
+    },
+    "AnalysisHistory": {
+      "title": "Analysis History Record",
+      "description": "A record of an article verification analysis performed by Gemini",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The unique ID of the user who performed the analysis"
+        },
+        "articleContent": {
+          "type": "string",
+          "description": "The analyzed text content of the article or claim"
+        },
+        "headline": {
+          "type": "string",
+          "description": "The title or headline of the article"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Optional direct source link to the article"
+        },
+        "authenticityScore": {
+          "type": "integer",
+          "description": "Overall truthfulness and authenticity rating out of 100"
+        },
+        "classification": {
+          "type": "string",
+          "description": "The evaluation category (e.g. Real, Fake, Clickbait, Misleading, Partially True)"
+        },
+        "confidenceScore": {
+          "type": "integer",
+          "description": "AI confidence level in this evaluation out of 100"
+        },
+        "sourceCredibilityScore": {
+          "type": "integer",
+          "description": "Credibility estimation score out of 100"
+        },
+        "emotionalManipulationScore": {
+          "type": "integer",
+          "description": "Level of emotional manipulation phrasing 0-100"
+        },
+        "riskLevel": {
+          "type": "string",
+          "description": "Sharing safety risk level (Low, Medium, High)"
+        },
+        "sentiment": {
+          "type": "string",
+          "description": "Overall emotional tone"
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Comprehensive analytical explanation from TruthLens AI"
+        },
+        "analysisDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the analysis was performed"
+        }
+      },
+      "required": ["userId", "articleContent", "authenticityScore", "classification", "confidenceScore", "analysisDate"]
+    },
+    "SavedReport": {
+      "title": "Saved Report Document",
+      "description": "A customized report generated and saved by the user",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The unique ID of the user who saved the report"
+        },
+        "reportTitle": {
+          "type": "string",
+          "description": "User custom metadata title for this report"
+        },
+        "reportData": {
+          "type": "object",
+          "description": "The complete analysis data map preserved inside the report"
+        },
+        "pdfUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Link to the generated report PDF file stored in Firebase Storage"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the report was saved"
+        }
+      },
+      "required": ["userId", "reportTitle", "reportData", "createdAt"]
+    },
+    "QuizProgress": {
+      "title": "Quiz Progress",
+      "description": "User quiz completions, scores and certification progress",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The owner's Firebase user ID"
+        },
+        "completedModules": {
+          "type": "array",
+          "description": "List of completed module IDs"
+        },
+        "quizScores": {
+          "type": "object",
+          "description": "Quiz scores lookup keyed by module ID"
+        },
+        "certified": {
+          "type": "boolean",
+          "description": "Whether the user earned their digital verification credentials"
+        }
+      },
+      "required": ["userId", "completedModules", "quizScores", "certified"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile records indexed by the Firebase Authentication User ID"
+    },
+    "/analysisHistory/{analysisId}": {
+      "schema": "AnalysisHistory",
+      "description": "The history of all verified claims performed by users"
+    },
+    "/savedReports/{reportId}": {
+      "schema": "SavedReport",
+      "description": "The list of custom saved verification reports"
+    },
+    "/quizProgress/{userId}": {
+      "schema": "QuizProgress",
+      "description": "Quiz progress details indexed by User ID"
+    }
+  }
+}

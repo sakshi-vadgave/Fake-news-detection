@@ -1,0 +1,136 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (default deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'vadgavesakshi8@gmail.com' ||
+        request.auth.token.email == 'admin@truthlens.ai'
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Test Collection (Used for startup connection check) ---
+    match /test/{testId} {
+      allow get: if true;
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming());
+      allow update: if isSignedIn() && isOwner(userId) && isValidUser(incoming()) 
+                     && incoming().createdAt == existing().createdAt; // createdAt is immutable
+      allow delete: if isSignedIn() && (isOwner(userId) || isAdmin());
+
+      function isValidUser(data) {
+        return data.keys().hasAll(['name', 'email', 'createdAt'])
+          && data.keys().size() >= 3
+          && data.name is string && data.name.size() > 0 && data.name.size() <= 150
+          && data.email is string && data.email.size() > 0 && data.email.size() <= 254
+          && (data.createdAt == request.time || data.createdAt is string);
+      }
+    }
+
+    // --- Quiz Progress Collection ---
+    match /quizProgress/{userId} {
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isOwner(userId) && isValidQuizProgress(incoming());
+      allow update: if isSignedIn() && isOwner(userId) && isValidQuizProgress(incoming());
+      allow delete: if isSignedIn() && (isOwner(userId) || isAdmin());
+
+      function isValidQuizProgress(data) {
+        return data.keys().hasAll(['userId', 'completedModules', 'quizScores', 'certified'])
+          && data.userId == request.auth.uid
+          && data.completedModules is list
+          && data.completedModules.size() <= 20
+          && data.quizScores is map
+          && data.certified is bool;
+      }
+    }
+
+    // --- Analysis History Collection ---
+    match /analysisHistory/{analysisId} {
+      // Secure list query block
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      allow create: if isSignedIn() && isValidId(analysisId) 
+                     && incoming().userId == request.auth.uid
+                     && incoming().keys().hasAll(['userId', 'articleContent', 'authenticityScore', 'classification', 'confidenceScore', 'analysisDate'])
+                     && isValidAnalysisHistory(incoming());
+                     
+      allow update: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin())
+                     && incoming().userId == request.auth.uid
+                     && isValidAnalysisHistory(incoming())
+                     && (
+                       // Action: Favorite toggle
+                       incoming().diff(existing()).affectedKeys().hasOnly(['isFavorite'])
+                     );
+
+      allow delete: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      function isValidAnalysisHistory(data) {
+        return data.userId == request.auth.uid
+          && (('articleContent' in data) ? (data.articleContent is string && data.articleContent.size() > 0) : (('content' in data) ? (data.content is string && data.content.size() > 0) : false))
+          && (data.authenticityScore is int || data.authenticityScore is float) && data.authenticityScore >= 0 && data.authenticityScore <= 100
+          && (data.confidenceScore is int || data.confidenceScore is float) && data.confidenceScore >= 0 && data.confidenceScore <= 100
+          && data.classification is string && data.classification.size() > 0
+          && (!('isFavorite' in data) || data.isFavorite is bool)
+          && (!('analysisDate' in data) || data.analysisDate is string)
+          && (!('analyzedAt' in data) || data.analyzedAt is string);
+      }
+    }
+
+    // --- Saved Reports Collection ---
+    match /savedReports/{reportId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() && isValidId(reportId)
+                     && incoming().userId == request.auth.uid
+                     && isValidSavedReport(incoming());
+
+      allow update: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin())
+                     && incoming().userId == request.auth.uid
+                     && isValidSavedReport(incoming())
+                     && incoming().createdAt == existing().createdAt; // Immutable createdAt
+
+      allow delete: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      function isValidSavedReport(data) {
+        return data.keys().hasAll(['userId', 'reportTitle', 'reportData', 'createdAt'])
+          && data.userId == request.auth.uid
+          && data.reportTitle is string && data.reportTitle.size() > 0 && data.reportTitle.size() <= 200
+          && data.reportData is map;
+      }
+    }
+  }
+}
