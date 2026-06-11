@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/analyze",
+      "destination": "/api/analyze.ts"
+    },
+    {
+      "source": "/api/chat",
+      "destination": "/api/chat.ts"
+    },
+    {
+      "source": "/api/health",
+      "destination": "/api/health.ts"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

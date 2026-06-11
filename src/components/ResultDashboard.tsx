@@ -1,4 +1,4 @@
-import { Printer, RotateCcw, AlertTriangle, ShieldCheck, HelpCircle, AlertOctagon, TrendingUp, Compass, HeartCrack, Lightbulb, Check, ChevronRight, Bookmark } from "lucide-react";
+import { Printer, RotateCcw, AlertTriangle, ShieldCheck, HelpCircle, AlertOctagon, TrendingUp, Compass, HeartCrack, Lightbulb, Check, ChevronRight, Bookmark, Download } from "lucide-react";
 import React from "react";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
@@ -12,6 +12,7 @@ interface ResultProps {
 export default function ResultDashboard({ result, onReset, token }: ResultProps) {
   const [favorite, setFavorite] = React.useState(result.isFavorite || false);
   const [loadingFav, setLoadingFav] = React.useState(false);
+  const [downloadingPdf, setDownloadingPdf] = React.useState(false);
 
   const toggleFavorite = async () => {
     if (!token || result.id.startsWith("guest-")) return;
@@ -36,8 +37,82 @@ export default function ResultDashboard({ result, onReset, token }: ResultProps)
 
   const scoreTheme = getAuthenticityColor(result.authenticityScore);
 
-  const handlePrint = () => {
-    window.print();
+  const handleExportPDF = async () => {
+    setDownloadingPdf(true);
+    try {
+      // 1. Install/load html2pdf.js from CDN dynamically if it's not present
+      if (!(window as any).html2pdf) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+          script.onload = () => resolve();
+          script.onerror = (e) => reject(e);
+          document.head.appendChild(script);
+        });
+      }
+
+      const html2pdf = (window as any).html2pdf;
+
+      // 2. Select the container and hide visual controls that shouldn't appear in the PDF report
+      const containerElement = document.getElementById("result-dashboard");
+      if (!containerElement) {
+        throw new Error("Target layout container element not found");
+      }
+
+      // Hide all element components with print:hidden, buttons, and specific visual rails
+      const hideElements = document.querySelectorAll(".print\\:hidden, button");
+      const savedStyles = new Map<Element, string>();
+
+      hideElements.forEach((el) => {
+        savedStyles.set(el, (el as HTMLElement).style.display);
+        (el as HTMLElement).style.display = "none";
+      });
+
+      // Show print-only header by temporarily swapping tailwind's hidden state
+      const printHeader = document.querySelector(".print\\:block");
+      let originalHeaderDisplay = "";
+      let originalHeaderClassList = "";
+      if (printHeader) {
+        originalHeaderDisplay = (printHeader as HTMLElement).style.display;
+        (printHeader as HTMLElement).style.display = "block";
+        (printHeader as HTMLElement).classList.remove("hidden");
+      }
+
+      // 3. Configure the high-fidelity rendering layout settings
+      const opt = {
+        margin:       [0.5, 0.4, 0.5, 0.4], // [top, left, bottom, right] in inches
+        filename:     `TruthLens_Audit_Report_${result.id || "export"}.pdf`,
+        image:        { type: "jpeg", quality: 0.98 },
+        html2canvas:  { 
+          scale: 2, 
+          useCORS: true, 
+          letterRendering: true,
+          scrollY: 0,
+          logging: false 
+        },
+        jsPDF:        { unit: "in", format: "letter", orientation: "portrait" },
+        pagebreak:    { mode: ["avoid-all", "css"] }
+      };
+
+      // 4. Trigger HTML element capture to standard PDF stream
+      await html2pdf().set(opt).from(containerElement).save();
+
+      // 5. Instantly restore application layouts to their clean React UI structures
+      hideElements.forEach((el) => {
+        const originalStyle = savedStyles.get(el);
+        (el as HTMLElement).style.display = originalStyle || "";
+      });
+
+      if (printHeader) {
+        (printHeader as HTMLElement).style.display = originalHeaderDisplay || "";
+        (printHeader as HTMLElement).classList.add("hidden");
+      }
+    } catch (pdfErr) {
+      console.error("Advanced client PDF extraction failed, returning to regular window print stream fallback:", pdfErr);
+      window.print();
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   return (
@@ -76,11 +151,21 @@ export default function ResultDashboard({ result, onReset, token }: ResultProps)
           )}
 
           <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer transition-all"
+            onClick={handleExportPDF}
+            disabled={downloadingPdf}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer transition-all disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <Printer className="w-4 h-4" />
-            Export PDF Report
+            {downloadingPdf ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Generating Report...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span>Export PDF Report</span>
+              </>
+            )}
           </button>
         </div>
       </div>

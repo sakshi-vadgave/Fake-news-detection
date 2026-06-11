@@ -69,7 +69,14 @@ export default function AIChatAssistant({ lastAnalysisResult, token }: AIChatAss
       });
 
       if (!response.ok) throw new Error("Connection glitch to chat servers");
-      const data = await response.json();
+      
+      let data: any;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        throw new Error("Invalid response format received from chat server");
+      }
 
       const aiMsg: ChatMessage = {
         id: "ai-" + Date.now(),
