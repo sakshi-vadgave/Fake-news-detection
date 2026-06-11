@@ -1,6 +1,6 @@
 {
   "name": "TruthLens AI",
   "description": "A startup-level full-stack AI Fake News, Misinformation & Claim Detection Platform.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

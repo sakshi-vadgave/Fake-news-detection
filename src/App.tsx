@@ -23,6 +23,7 @@ export default function App() {
   const [loginModalOpen, setLoginModalOpen] = React.useState(false);
   const [chatOpen, setChatOpen] = React.useState(false);
   const [appReady, setAppReady] = React.useState(false);
+  const [prefillNews, setPrefillNews] = React.useState<{ headline: string; content: string; url: string; autoAnalyze?: boolean } | null>(null);
 
   // Authenticate user session from Firebase Auth on mount
   React.useEffect(() => {
@@ -95,7 +96,17 @@ export default function App() {
   const renderTabContent = () => {
     switch (tab) {
       case "landing":
-        return <LandingPage setTab={setTab} openLoginModal={() => setLoginModalOpen(true)} user={user} />;
+        return (
+          <LandingPage
+            setTab={setTab}
+            openLoginModal={() => setLoginModalOpen(true)}
+            user={user}
+            onAnalyzeNews={(news) => {
+              setPrefillNews(news);
+              setTab("analyzer");
+            }}
+          />
+        );
       case "analyzer":
         if (activeResult) {
           return (
@@ -111,6 +122,11 @@ export default function App() {
             token={token}
             onAnalyzeSuccess={handleAnalyzeSuccess}
             setTab={setTab}
+            initialHeadline={prefillNews?.headline}
+            initialContent={prefillNews?.content}
+            initialUrl={prefillNews?.url}
+            autoAnalyze={prefillNews?.autoAnalyze}
+            onClearPrefill={() => setPrefillNews(null)}
           />
         );
       case "trends":

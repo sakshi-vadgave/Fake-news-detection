@@ -132,5 +132,11 @@ service cloud.firestore {
           && data.reportData is map;
       }
     }
+
+    // --- News Hub Stats Collection ---
+    match /newsHubStats/{statsId} {
+      allow get, list: if true;
+      allow create, update: if true;
+    }
   }
 }

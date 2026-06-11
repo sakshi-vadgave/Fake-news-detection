@@ -142,6 +142,34 @@
         }
       },
       "required": ["userId", "completedModules", "quizScores", "certified"]
+    },
+    "NewsHubStats": {
+      "title": "News Hub Article Statistics",
+      "description": "Tracks traffic metrics (views, analyses) for news articles in the hub",
+      "type": "object",
+      "properties": {
+        "articleId": {
+          "type": "string",
+          "description": "The unique article ID in the hub"
+        },
+        "headline": {
+          "type": "string",
+          "description": "The headline of the article"
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the article"
+        },
+        "viewCount": {
+          "type": "integer",
+          "description": "Number of times this article has been viewed"
+        },
+        "analyzeCount": {
+          "type": "integer",
+          "description": "Number of times this article has been analyzed"
+        }
+      },
+      "required": ["articleId", "headline", "category", "viewCount", "analyzeCount"]
     }
   },
   "firestore": {
@@ -160,6 +188,10 @@
     "/quizProgress/{userId}": {
       "schema": "QuizProgress",
       "description": "Quiz progress details indexed by User ID"
+    },
+    "/newsHubStats/{statsId}": {
+      "schema": "NewsHubStats",
+      "description": "Real-time analytics for the news articles"
     }
   }
 }

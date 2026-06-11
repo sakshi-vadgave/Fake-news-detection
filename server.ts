@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
-import { analyzeNewsContent, getChatbotResponse } from "./server/gemini.js";
+import { analyzeNewsContent, getChatbotResponse, extractTextFromImage } from "./server/gemini.js";
 
 dotenv.config();
 
@@ -10,8 +10,9 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Body parsing middleware
-  app.use(express.json());
+  // Body parsing middleware with expanded limits to support base64 images
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // ----------------------------------------
   // API PROXIES FOR SECURE GEMINI INTEGRATING
@@ -21,6 +22,8 @@ async function startServer() {
   app.get("/api/health", (req, res) => {
     res.json({ status: "alive", timestamp: new Date().toISOString() });
   });
+
+
 
   // News Claim AI Verification Proxy (Keeps API key secure)
   app.post("/api/analyze", async (req, res) => {
@@ -53,6 +56,24 @@ async function startServer() {
       res.json({ response: responseText });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // OCR Image Text Extraction (Keeps API key secure)
+  app.post("/api/ocr-extract", async (req, res) => {
+    try {
+      const { image, mimeType } = req.body;
+      if (!image) {
+        res.status(400).json({ error: "Image data is required for OCR processing." });
+        return;
+      }
+
+      console.log(`Extracting text from image via Gemini OCR`);
+      const extractedText = await extractTextFromImage(image, mimeType);
+      res.status(200).json({ text: extractedText });
+    } catch (e: any) {
+      console.error("OCR Extraction Endpoint Error:", e);
+      res.status(500).json({ error: e.message || "An unexpected error occurred during OCR text extraction." });
     }
   });
 
