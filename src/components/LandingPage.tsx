@@ -19,6 +19,7 @@ export default function LandingPage({ setTab, openLoginModal, user, onAnalyzeNew
   const [selectedArticle, setSelectedArticle] = React.useState<any | null>(null);
   const [factCheckArticle, setFactCheckArticle] = React.useState<any | null>(null);
   const [realtimeStats, setRealtimeStats] = React.useState<any>({});
+  const [logoError, setLogoError] = React.useState(false);
 
   const fetchRealtimeStats = async () => {
     try {
@@ -413,12 +414,61 @@ export default function LandingPage({ setTab, openLoginModal, user, onAnalyzeNew
                   3. Save the file.
                   ==================================================================================
                 */}
-                <img 
-                  src="logo.png" 
-                  alt="TruthLens News Media Monitoring Analysis Illustration"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-auto object-contain rounded-2xl shadow-sm transition-transform duration-500 group-hover:scale-101"
-                />
+                {!logoError ? (
+                  <img 
+                    src="logo.png" 
+                    alt="TruthLens News Media Monitoring Analysis Illustration"
+                    referrerPolicy="no-referrer"
+                    onError={() => setLogoError(true)}
+                    className="w-full h-auto object-contain rounded-2xl shadow-sm transition-transform duration-500 group-hover:scale-101"
+                  />
+                ) : (
+                  <div id="glow-panel-fallback" className="w-full py-8 px-6 bg-slate-950 text-white rounded-2xl flex flex-col items-center justify-center space-y-6 relative overflow-hidden min-h-[320px] transition-all duration-500 border border-slate-800">
+                    {/* Glowing effect with smooth premium blue radial pulse */}
+                    <div className="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.22),transparent_70%)] animate-pulse" />
+                    
+                    {/* Target scan rings design */}
+                    <div className="relative flex items-center justify-center w-24 h-24 mt-2">
+                      <span className="absolute inline-flex h-full w-full rounded-full border-2 border-blue-500/35 animate-ping duration-1000" />
+                      <span className="absolute inline-flex h-[80%] w-[80%] rounded-full border-2 border-cyan-400/40 animate-pulse" />
+                      
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center shadow-[0_0_24px_rgba(37,99,235,0.6)] z-10">
+                        <Shield id="scanned-shield-icon" className="w-8 h-8 text-white stroke-[1.5]" />
+                      </div>
+                    </div>
+
+                    {/* Scanner live labels */}
+                    <div className="text-center space-y-2 z-10 w-full">
+                      <span className="text-xs uppercase tracking-widest text-cyan-400 font-bold bg-cyan-950/70 py-1.5 px-3 rounded-full border border-cyan-800/40">
+                        Media Analytics Active
+                      </span>
+                      <h4 className="text-lg font-bold text-white tracking-tight">TruthLens Digital Guard</h4>
+                      <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+                        Validation framework scanning syntactic lean, source metadata indicators, and structural truth signals instantaneously.
+                      </p>
+                    </div>
+
+                    {/* Micro information board */}
+                    <div className="w-full grid grid-cols-2 gap-2 text-[10px] text-slate-300 z-10 bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
+                      <div className="flex items-center gap-1.5 justify-start">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Source Check: Passed</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 justify-start">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Style Lean: Neutral</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 justify-start">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Accuracy Index: 98.7%</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 justify-start">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Vulnerability: Trace</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
