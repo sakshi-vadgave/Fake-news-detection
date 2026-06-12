@@ -2,7 +2,8 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
-import { analyzeNewsContent, getChatbotResponse, extractTextFromImage } from "./server/gemini.js";
+import { analyzeNewsContent, getChatbotResponse, extractTextFromImage, generateNewsFeedAudit } from "./server/gemini.js";
+import { fetchLiveNews } from "./server/newsCache.js";
 
 dotenv.config();
 
@@ -21,6 +22,35 @@ async function startServer() {
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "alive", timestamp: new Date().toISOString() });
+  });
+
+  // Secure news proxy endpoint (returns filtered, sorted, non-AI real news)
+  app.get("/api/news", async (req, res) => {
+    try {
+      const category = (req.query.category as string) || "All";
+      console.log(`[API PROXY] Requesting news for category: ${category}`);
+      const newsData = await fetchLiveNews(category);
+      res.status(200).json(newsData);
+    } catch (e: any) {
+      console.error("API News proxy endpoint error:", e);
+      res.status(500).json({ error: "Failed to fetch real-time news feed" });
+    }
+  });
+
+  // News Feed TruthLens AI audit verification (Keeps API key secure)
+  app.post("/api/news/verify", async (req, res) => {
+    try {
+      const { headline, description, url, source } = req.body;
+      if (!headline) {
+        res.status(400).json({ error: "Headline is required for news audit" });
+        return;
+      }
+      const audit = await generateNewsFeedAudit(headline, description || "", url || "", source || "Unknown Source");
+      res.status(200).json(audit);
+    } catch (e: any) {
+      console.error("API news verify endpoint error:", e);
+      res.status(500).json({ error: "Failed to generate AI news audit at this time" });
+    }
   });
 
 

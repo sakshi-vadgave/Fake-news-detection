@@ -1,5 +1,5 @@
 import React from "react";
-import { ShieldCheck, TrendingUp, BookOpen, MessageSquareCode, FileText, User, LogOut, ChevronRight, Menu, X } from "lucide-react";
+import { ShieldCheck, TrendingUp, BookOpen, MessageSquareCode, FileText, User, LogOut, ChevronRight, Menu, X, Sun, Moon } from "lucide-react";
 
 interface NavbarProps {
   currentTab: string;
@@ -7,9 +7,11 @@ interface NavbarProps {
   user: any;
   onLogout: () => void;
   openLoginModal: () => void;
+  theme: string;
+  setTheme: (theme: string) => void;
 }
 
-export default function Navbar({ currentTab, setTab, user, onLogout, openLoginModal }: NavbarProps) {
+export default function Navbar({ currentTab, setTab, user, onLogout, openLoginModal, theme, setTheme }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const navItems = [
@@ -71,6 +73,16 @@ export default function Navbar({ currentTab, setTab, user, onLogout, openLoginMo
 
           {/* Auth Controls */}
           <div className="hidden md:flex items-center gap-3">
+            {/* Live Theme Toggle */}
+            <button
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+              className="pointer-events-auto p-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center cursor-pointer select-none gap-1.5 hover:border-slate-300 bg-white"
+              title={theme === "light" ? "Switch to Dark Mode (🌙)" : "Switch to Light Mode (🌞)"}
+            >
+              <span className="text-[17px] leading-none">{theme === "light" ? "🌞" : "🌙"}</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">{theme === "light" ? "Light" : "Dark"}</span>
+            </button>
+
             {user ? (
               <div className="flex items-center gap-2.5">
                 <button
@@ -104,7 +116,14 @@ export default function Navbar({ currentTab, setTab, user, onLogout, openLoginMo
           </div>
 
           {/* Mobile Menu Action */}
-          <div className="flex items-center md:hidden">
+          <div className="flex items-center md:hidden gap-2">
+            <button
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
+              title="Toggle Theme"
+            >
+              <span className="text-[16px] leading-none">{theme === "light" ? "🌞" : "🌙"}</span>
+            </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"

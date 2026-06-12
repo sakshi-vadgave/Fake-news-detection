@@ -170,12 +170,56 @@
         }
       },
       "required": ["articleId", "headline", "category", "viewCount", "analyzeCount"]
+    },
+    "ViewedArticle": {
+      "title": "User Viewed Article",
+      "description": "An article viewed by a user to prevent showing it as a fresh/new element",
+      "type": "object",
+      "properties": {
+        "articleId": { "type": "string" },
+        "articleUrl": { "type": "string", "format": "uri" },
+        "viewedAt": { "type": "string", "format": "date-time" },
+        "category": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["articleId", "articleUrl", "viewedAt", "category", "userId"]
+    },
+    "PreferredCategory": {
+      "title": "User Category Preferences",
+      "description": "Saved personalized preferred categories with frequency counts",
+      "type": "object",
+      "properties": {
+        "category": { "type": "string" },
+        "clickCount": { "type": "integer" }
+      },
+      "required": ["category", "clickCount"]
+    },
+    "LastVisit": {
+      "title": "User Last Connected Time",
+      "description": "Tracking when the user last visited the verified news feed page",
+      "type": "object",
+      "properties": {
+        "lastVisitTime": { "type": "string", "format": "date-time" }
+      },
+      "required": ["lastVisitTime"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
       "description": "User profile records indexed by the Firebase Authentication User ID"
+    },
+    "/users/{userId}/viewedArticles/{articleId}": {
+      "schema": "ViewedArticle",
+      "description": "Audit trails of articles opened and marked viewed by the user"
+    },
+    "/users/{userId}/preferredCategories/{categoryId}": {
+      "schema": "PreferredCategory",
+      "description": "Collection tracks priority of feed categories for user relevance"
+    },
+    "/users/{userId}/lastVisit/{visitId}": {
+      "schema": "LastVisit",
+      "description": "Timestamps of last sessions used to compute count of newer incoming items"
     },
     "/analysisHistory/{analysisId}": {
       "schema": "AnalysisHistory",

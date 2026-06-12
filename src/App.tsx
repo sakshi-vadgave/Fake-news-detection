@@ -25,6 +25,19 @@ export default function App() {
   const [appReady, setAppReady] = React.useState(false);
   const [prefillNews, setPrefillNews] = React.useState<{ headline: string; content: string; url: string; autoAnalyze?: boolean } | null>(null);
 
+  const [theme, setTheme] = React.useState(() => {
+    return localStorage.getItem("theme") || "light";
+  });
+
+  React.useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
   // Authenticate user session from Firebase Auth on mount
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -186,6 +199,8 @@ export default function App() {
           user={user}
           onLogout={handleLogout}
           openLoginModal={() => setLoginModalOpen(true)}
+          theme={theme}
+          setTheme={setTheme}
         />
         {/* Quick Admin bar shortcut */}
         {isAdmin && tab !== "admin" && (

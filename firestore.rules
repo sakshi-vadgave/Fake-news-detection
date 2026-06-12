@@ -58,6 +58,20 @@ service cloud.firestore {
       }
     }
 
+    // Flat subcollection rules for maximum reliability and permission consistency
+    match /users/{userId}/viewedArticles/{articleId} {
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /users/{userId}/preferredCategories/{categoryId} {
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /users/{userId}/lastVisit/{visitId} {
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+
     // --- Quiz Progress Collection ---
     match /quizProgress/{userId} {
       allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
