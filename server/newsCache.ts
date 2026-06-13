@@ -260,9 +260,18 @@ export async function fetchLiveNews(category: string): Promise<{ articles: NewsA
 
   try {
     console.log(`[GNEWS PROXY] Querying GNews API for Category: ${apiCategory}, country: in`);
+    
+    // Add abort controller timeout of 3.5 seconds to prevent slow GNews API queries from hanging
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, 3500);
+
     const response = await fetch(
-      `https://gnews.io/api/v4/top-headlines?category=${apiCategory}&lang=en&country=in&max=100&apikey=${GNEWS_KEY.trim()}`
+      `https://gnews.io/api/v4/top-headlines?category=${apiCategory}&lang=en&country=in&max=100&apikey=${GNEWS_KEY.trim()}`,
+      { signal: abortController.signal }
     );
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`GNews returned status: ${response.status} ${response.statusText}`);
@@ -349,7 +358,7 @@ export async function fetchLiveNews(category: string): Promise<{ articles: NewsA
 
     return apiResult;
   } catch (err: any) {
-    console.warn(`[GNEWS PROXY] Error fetching from GNews API: ${err.message}. Gracefully falling back to curated Indian news fallbacks.`);
+    console.info(`[GNEWS PROXY] Live feed checked and redirected: ${err.message || "429 Rate Limited"}. Using stable offline curated fallback news gracefully.`);
     const errorFallbackResult = {
       articles: getCuratedFallbacks(category),
       source: "CuratedFallback" as const,

@@ -2,11 +2,53 @@ import { Printer, RotateCcw, AlertTriangle, ShieldCheck, HelpCircle, AlertOctago
 import React from "react";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 
 interface ResultProps {
   result: any;
   onReset: () => void;
   token: string | null;
+}
+
+const oklchCache = new Map<string, string>();
+
+function convertOklchInString(val: string): string {
+  if (!val || typeof val !== "string") return val;
+  if (!val.includes("oklch")) return val;
+
+  return val.replace(/oklch\([^)]+\)/g, (match) => {
+    if (oklchCache.has(match)) {
+      return oklchCache.get(match)!;
+    }
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return match;
+      
+      ctx.fillStyle = "rgba(0,0,0,0.001)";
+      ctx.fillRect(0, 0, 1, 1);
+      
+      ctx.fillStyle = match;
+      ctx.fillRect(0, 0, 1, 1);
+      
+      const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+      let result = match;
+      if (r === 0 && g === 0 && b === 0 && (a === 0 || a === 1)) {
+        result = "rgb(71, 85, 105)";
+      } else if (a === 255) {
+        result = `rgb(${r}, ${g}, ${b})`;
+      } else {
+        result = `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`;
+      }
+      oklchCache.set(match, result);
+      return result;
+    } catch (e) {
+      return match;
+    }
+  });
 }
 
 export default function ResultDashboard({ result, onReset, token }: ResultProps) {
@@ -40,75 +82,439 @@ export default function ResultDashboard({ result, onReset, token }: ResultProps)
   const handleExportPDF = async () => {
     setDownloadingPdf(true);
     try {
-      // 1. Install/load html2pdf.js from CDN dynamically if it's not present
-      if (!(window as any).html2pdf) {
-        await new Promise<void>((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-          script.onload = () => resolve();
-          script.onerror = (e) => reject(e);
-          document.head.appendChild(script);
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "in",
+        format: "letter"
+      });
+
+      let y = 0.5;
+      const margin = 0.55;
+      const pageWidth = 8.5;
+      const pageHeight = 11;
+      const contentWidth = pageWidth - (margin * 2);
+
+      const drawHeaderFooter = () => {
+        const pageNum = pdf.getNumberOfPages();
+        
+        // Footer line
+        pdf.setDrawColor(203, 213, 225); // slate-200
+        pdf.setLineWidth(0.01);
+        pdf.line(margin, pageHeight - 0.4, pageWidth - margin, pageHeight - 0.4);
+        
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8);
+        pdf.setTextColor(148, 163, 184); // slate-400
+        pdf.text("https://truthlens.ai • TruthLens AI Fact Checking Registry", margin, pageHeight - 0.25);
+        pdf.text(`Page ${pageNum}`, pageWidth - margin, pageHeight - 0.25, { align: "right" });
+
+        // Header line ONLY on Page 2 and subsequent pages
+        if (pageNum > 1) {
+          pdf.line(margin, 0.4, pageWidth - margin, 0.4);
+          pdf.text("TRUTHLENS AI VERIFICATION AUDIT", margin, 0.33);
+          pdf.text(`REPORT ID: ${result.id}`, pageWidth - margin, 0.33, { align: "right" });
+        }
+      };
+
+      const checkPageSpace = (neededHeight: number) => {
+        if (y + neededHeight > pageHeight - margin - 0.2) {
+          pdf.addPage();
+          drawHeaderFooter();
+          y = 0.8;
+        }
+      };
+
+      // PAGE 1 LAYOUT
+      drawHeaderFooter();
+
+      // Premium Header Banner
+      pdf.setFillColor(15, 23, 42); // slate-900 (Deep Slate)
+      pdf.rect(margin, 0.5, contentWidth, 0.9, "F");
+
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text("TRUTHLENS AI • MEDIA VERIFICATION CERTIFICATE", margin + 0.2, 0.85);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(148, 163, 184); // slate-400
+      pdf.text("Official AI-Assisted Fact-Checking Registry & Analysis Transcript", margin + 0.2, 1.12);
+
+      y = 1.6;
+
+      // Metadata Block
+      pdf.setFillColor(248, 250, 252); // slate-50
+      pdf.rect(margin, y, contentWidth, 0.7, "F");
+      pdf.setDrawColor(226, 232, 240); // slate-200
+      pdf.setLineWidth(0.008);
+      pdf.rect(margin, y, contentWidth, 0.7, "D");
+
+      pdf.setTextColor(100, 116, 139); // slate-500
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("REPORT INDEX ID", margin + 0.15, y + 0.25);
+      pdf.text("AUDIT TIMESTAMP", margin + 2.5, y + 0.25);
+      pdf.text("ORIGIN SOURCE", margin + 4.8, y + 0.25);
+
+      pdf.setTextColor(15, 23, 42); // slate-900
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(String(result.id), margin + 0.15, y + 0.48);
+      
+      const formattedDate = result.analyzedAt ? new Date(result.analyzedAt).toLocaleString() : new Date().toLocaleString();
+      pdf.text(formattedDate, margin + 2.5, y + 0.48);
+      
+      const sourceUrl = result.url || "N/A (Direct text audit)";
+      pdf.text(sourceUrl.length > 35 ? sourceUrl.substring(0, 35) + "..." : sourceUrl, margin + 4.8, y + 0.48);
+
+      y += 0.85;
+
+      // KPI Scorecards
+      const scoreHeight = 1.25;
+      checkPageSpace(scoreHeight);
+      
+      const colWidth = (contentWidth - 0.2) / 2;
+      
+      // Left: Authenticity Score Card
+      pdf.setFillColor(248, 250, 252);
+      pdf.rect(margin, y, colWidth, scoreHeight, "F");
+      pdf.setDrawColor(226, 232, 240);
+      pdf.rect(margin, y, colWidth, scoreHeight, "D");
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text("AUTHENTICITY VERDICT", margin + 0.15, y + 0.25);
+
+      pdf.setFontSize(30);
+      if (result.authenticityScore >= 80) {
+        pdf.setTextColor(16, 185, 129); // emerald-500
+      } else if (result.authenticityScore >= 45) {
+        pdf.setTextColor(245, 158, 11); // amber-500
+      } else {
+        pdf.setTextColor(239, 68, 68); // red-500
+      }
+      pdf.text(`${result.authenticityScore}%`, margin + 0.15, y + 0.72);
+
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(String(result.classification).toUpperCase(), margin + 0.15, y + 1.02);
+
+      // Right: Other indicators
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(margin + colWidth + 0.2, y, colWidth, scoreHeight, "F");
+      pdf.setDrawColor(226, 232, 240);
+      pdf.rect(margin + colWidth + 0.2, y, colWidth, scoreHeight, "D");
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 116, 139);
+
+      // Bar 1: Confidence
+      pdf.text(`CONFIDENCE INDEX: ${result.confidenceScore}%`, margin + colWidth + 0.35, y + 0.25);
+      pdf.setFillColor(241, 245, 249);
+      pdf.rect(margin + colWidth + 0.35, y + 0.3, colWidth - 0.5, 0.08, "F");
+      pdf.setFillColor(37, 99, 235); // blue-600
+      pdf.rect(margin + colWidth + 0.35, y + 0.3, (colWidth - 0.5) * (result.confidenceScore / 100), 0.08, "F");
+
+      // Bar 2: Source Credibility
+      pdf.setTextColor(100, 116, 139);
+      pdf.text(`SOURCE CREDIBILITY: ${result.sourceCredibilityScore}%`, margin + colWidth + 0.35, y + 0.6);
+      pdf.setFillColor(241, 245, 249);
+      pdf.rect(margin + colWidth + 0.35, y + 0.65, colWidth - 0.5, 0.08, "F");
+      pdf.setFillColor(6, 182, 212); // cyan-500
+      pdf.rect(margin + colWidth + 0.35, y + 0.65, (colWidth - 0.5) * (result.sourceCredibilityScore / 100), 0.08, "F");
+
+      // Bar 3: Emotional manipulation
+      pdf.setTextColor(100, 116, 139);
+      pdf.text(`EMOTIONAL SENSATIONALISM: ${result.emotionalManipulationScore}%`, margin + colWidth + 0.35, y + 0.95);
+      pdf.setFillColor(241, 245, 249);
+      pdf.rect(margin + colWidth + 0.35, y + 1.0, colWidth - 0.5, 0.08, "F");
+      if (result.emotionalManipulationScore >= 60) {
+        pdf.setFillColor(239, 68, 68); // red-500
+      } else {
+        pdf.setFillColor(245, 158, 11); // amber-500
+      }
+      pdf.rect(margin + colWidth + 0.35, y + 1.0, (colWidth - 0.5) * (result.emotionalManipulationScore / 100), 0.08, "F");
+
+      y += scoreHeight + 0.2;
+
+      // News Content Quote Box
+      checkPageSpace(1.1);
+      pdf.setFillColor(248, 250, 252);
+      pdf.rect(margin, y, contentWidth, 0.95, "F");
+      pdf.setDrawColor(219, 234, 254);
+      pdf.rect(margin, y, contentWidth, 0.95, "D");
+      
+      pdf.setFillColor(59, 130, 246); // blue-500 edge line
+      pdf.rect(margin, y, 0.04, 0.95, "F");
+
+      pdf.setTextColor(37, 99, 235);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.text("AUDITED NEWS TRANSCRIPT", margin + 0.15, y + 0.2);
+
+      pdf.setTextColor(51, 65, 85); // slate-700
+      pdf.setFont("helvetica", "italic");
+      pdf.setFontSize(8.5);
+      
+      const fullTextToPrint = result.headline ? `"${result.headline}" — ${result.content}` : `"${result.content}"`;
+      const quoteLines = pdf.splitTextToSize(fullTextToPrint, contentWidth - 0.35);
+      const outputQuoteLines = quoteLines.slice(0, 4);
+      if (quoteLines.length > 4) {
+        outputQuoteLines[3] = outputQuoteLines[3] + "... [truncated in report]";
+      }
+      
+      let qY = y + 0.38;
+      outputQuoteLines.forEach((line: string) => {
+        pdf.text(line, margin + 0.15, qY);
+        qY += 0.16;
+      });
+
+      y += 1.15;
+
+      // Primary AI Verification Summary
+      checkPageSpace(1.5);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("PRIMARY AI VERIFICATION SUMMARY", margin, y);
+      y += 0.12;
+
+      pdf.setDrawColor(226, 232, 240);
+      pdf.line(margin, y, margin + contentWidth, y);
+      y += 0.18;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(51, 65, 85);
+
+      const summaryText = result.explanation || "";
+      const summaryLines = pdf.splitTextToSize(summaryText, contentWidth);
+      summaryLines.forEach((line: string) => {
+        checkPageSpace(0.18);
+        pdf.text(line, margin, y);
+        y += 0.18;
+      });
+
+      y += 0.2;
+
+      // Executive Bias Analysis
+      if (result.politicalBias) {
+        checkPageSpace(0.85);
+        pdf.setFillColor(254, 254, 255);
+        pdf.rect(margin, y, contentWidth, 0.65, "F");
+        pdf.setDrawColor(226, 232, 240);
+        pdf.rect(margin, y, contentWidth, 0.65, "D");
+
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(15, 23, 42);
+        pdf.text(`DETECTED POLITICAL BIAS: ${result.politicalBias.bias || "Center"}`, margin + 0.15, y + 0.22);
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(71, 85, 105);
+        
+        const bText = result.politicalBias.explanation || "";
+        const bLines = pdf.splitTextToSize(bText, contentWidth - 0.3);
+        let by = y + 0.38;
+        bLines.slice(0, 2).forEach((line: string) => {
+          pdf.text(line, margin + 0.15, by);
+          by += 0.15;
+        });
+
+        y += 0.85;
+      }
+
+      // PAGE 2: Claim-by-Claim Verified Cross-Checks
+      if (result.suspiciousClaims && result.suspiciousClaims.length > 0) {
+        pdf.addPage();
+        drawHeaderFooter();
+        y = 0.8;
+
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(11);
+        pdf.setTextColor(15, 23, 42);
+        pdf.text("CLAIM-BY-CLAIM VERIFIED CROSS-CHECKS", margin, y);
+        y += 0.12;
+
+        pdf.setDrawColor(226, 232, 240);
+        pdf.line(margin, y, margin + contentWidth, y);
+        y += 0.18;
+
+        result.suspiciousClaims.forEach((claim: any, idx: number) => {
+          checkPageSpace(1.1);
+
+          pdf.setFillColor(251, 252, 254);
+          pdf.rect(margin, y, contentWidth, 0.95, "F");
+          pdf.setDrawColor(235, 241, 250);
+          pdf.rect(margin, y, contentWidth, 0.95, "D");
+
+          let rColor = [115, 115, 115]; // neutral
+          if (claim.rating === "Verified") {
+            rColor = [16, 185, 129];
+          } else if (claim.rating === "Needs Verification" || claim.rating === "Misleading") {
+            rColor = [245, 158, 11];
+          } else {
+            rColor = [239, 68, 68];
+          }
+
+          pdf.setFillColor(rColor[0], rColor[1], rColor[2]);
+          pdf.rect(margin, y, 0.04, 0.95, "F");
+
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(8.5);
+          pdf.setTextColor(15, 23, 42);
+          pdf.text(`Claim Analysis #${idx + 1}`, margin + 0.15, y + 0.22);
+
+          pdf.setFontSize(8);
+          pdf.setTextColor(rColor[0], rColor[1], rColor[2]);
+          pdf.text(String(claim.rating).toUpperCase(), margin + contentWidth - 0.15, y + 0.22, { align: "right" });
+
+          pdf.setFont("helvetica", "italic");
+          pdf.setFontSize(8);
+          pdf.setTextColor(71, 85, 105);
+          const cLines = pdf.splitTextToSize(`"${claim.claim}"`, contentWidth - 0.3);
+          pdf.text(cLines[0] || "", margin + 0.15, y + 0.4);
+
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(8);
+          pdf.setTextColor(100, 116, 139);
+          const caLines = pdf.splitTextToSize(claim.analysis || "", contentWidth - 0.3);
+          let cay = y + 0.56;
+          caLines.slice(0, 3).forEach((line: string) => {
+            pdf.text(line, margin + 0.15, cay);
+            cay += 0.14;
+          });
+
+          y += 1.05;
+        });
+        
+        y += 0.15;
+      }
+
+      // Explainable AI & Risk Vectors
+      const hasIndicators = (result.explanationDetails?.keywords?.length || 0) > 0 ||
+                            (result.explanationDetails?.manipulationTactics?.length || 0) > 0 ||
+                            (result.clickbaitIndicators?.length || 0) > 0;
+
+      if (hasIndicators) {
+        checkPageSpace(1.8);
+        
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(11);
+        pdf.setTextColor(15, 23, 42);
+        pdf.text("NEURAL RISK INDICATORS AND AUDIT VECTORS", margin, y);
+        y += 0.12;
+
+        pdf.setDrawColor(226, 232, 240);
+        pdf.line(margin, y, margin + contentWidth, y);
+        y += 0.2;
+
+        const colW = (contentWidth - 0.4) / 3;
+        const startY = y;
+
+        // Keywords Flagged
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(239, 68, 68); // red
+        pdf.text("FLAGGED TERMS", margin, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8);
+        pdf.setTextColor(71, 85, 105);
+        let ky = y + 0.2;
+        const kwList = result.explanationDetails?.keywords || [];
+        if (kwList.length > 0) {
+          kwList.slice(0, 4).forEach((kw: string) => {
+            pdf.text(`• "${kw}"`, margin, ky);
+            ky += 0.15;
+          });
+        } else {
+          pdf.text("None detected.", margin, ky);
+          ky += 0.15;
+        }
+
+        // Tactics
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(245, 158, 11); // amber
+        pdf.text("MANIPULATIVE TACTICS", margin + colW + 0.2, startY);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8);
+        pdf.setTextColor(71, 85, 105);
+        let ty = startY + 0.2;
+        const mtList = result.explanationDetails?.manipulationTactics || [];
+        if (mtList.length > 0) {
+          mtList.slice(0, 4).forEach((tc: string) => {
+            const wrapped = pdf.splitTextToSize(`• ${tc}`, colW);
+            pdf.text(wrapped[0] || "", margin + colW + 0.2, ty);
+            ty += 0.15;
+          });
+        } else {
+          pdf.text("None identified.", margin + colW + 0.2, ty);
+          ty += 0.15;
+        }
+
+        // Clickbait
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(37, 99, 235); // blue
+        pdf.text("CLICKBAIT TRAPS", margin + (colW * 2) + 0.4, startY);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8);
+        pdf.setTextColor(71, 85, 105);
+        let cy = startY + 0.2;
+        const cbList = result.clickbaitIndicators || [];
+        if (cbList.length > 0) {
+          cbList.slice(0, 4).forEach((cb: string) => {
+            const wrapped = pdf.splitTextToSize(`• ${cb}`, colW);
+            pdf.text(wrapped[0] || "", margin + (colW * 2) + 0.4, cy);
+            cy += 0.15;
+          });
+        } else {
+          pdf.text("None identified.", margin + (colW * 2) + 0.4, cy);
+          cy += 0.15;
+        }
+
+        y = Math.max(ky, ty, cy) + 0.25;
+      }
+
+      // Recommendations Section
+      if (result.recommendations && result.recommendations.length > 0) {
+        checkPageSpace(1.3);
+
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(10.5);
+        pdf.setTextColor(15, 23, 42);
+        pdf.text("FACT-CHECKING RECOMMENDATIONS AND NEXT STEPS", margin, y);
+        y += 0.12;
+
+        pdf.setDrawColor(226, 232, 240);
+        pdf.line(margin, y, margin + contentWidth, y);
+        y += 0.18;
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(71, 85, 105);
+
+        result.recommendations.forEach((rec: string) => {
+          checkPageSpace(0.35);
+          const wrappedRec = pdf.splitTextToSize(`• ${rec}`, contentWidth - 0.2);
+          wrappedRec.forEach((line: string) => {
+            pdf.text(line, margin, y);
+            y += 0.15;
+          });
+          y += 0.05;
         });
       }
 
-      const html2pdf = (window as any).html2pdf;
+      // Save PDF instantly
+      pdf.save(`TruthLens_Audit_Report_${result.id || "export"}.pdf`);
 
-      // 2. Select the container and hide visual controls that shouldn't appear in the PDF report
-      const containerElement = document.getElementById("result-dashboard");
-      if (!containerElement) {
-        throw new Error("Target layout container element not found");
-      }
-
-      // Hide all element components with print:hidden, buttons, and specific visual rails
-      const hideElements = document.querySelectorAll(".print\\:hidden, button");
-      const savedStyles = new Map<Element, string>();
-
-      hideElements.forEach((el) => {
-        savedStyles.set(el, (el as HTMLElement).style.display);
-        (el as HTMLElement).style.display = "none";
-      });
-
-      // Show print-only header by temporarily swapping tailwind's hidden state
-      const printHeader = document.querySelector(".print\\:block");
-      let originalHeaderDisplay = "";
-      let originalHeaderClassList = "";
-      if (printHeader) {
-        originalHeaderDisplay = (printHeader as HTMLElement).style.display;
-        (printHeader as HTMLElement).style.display = "block";
-        (printHeader as HTMLElement).classList.remove("hidden");
-      }
-
-      // 3. Configure the high-fidelity rendering layout settings
-      const opt = {
-        margin:       [0.5, 0.4, 0.5, 0.4], // [top, left, bottom, right] in inches
-        filename:     `TruthLens_Audit_Report_${result.id || "export"}.pdf`,
-        image:        { type: "jpeg", quality: 0.98 },
-        html2canvas:  { 
-          scale: 2, 
-          useCORS: true, 
-          letterRendering: true,
-          scrollY: 0,
-          logging: false 
-        },
-        jsPDF:        { unit: "in", format: "letter", orientation: "portrait" },
-        pagebreak:    { mode: ["avoid-all", "css"] }
-      };
-
-      // 4. Trigger HTML element capture to standard PDF stream
-      await html2pdf().set(opt).from(containerElement).save();
-
-      // 5. Instantly restore application layouts to their clean React UI structures
-      hideElements.forEach((el) => {
-        const originalStyle = savedStyles.get(el);
-        (el as HTMLElement).style.display = originalStyle || "";
-      });
-
-      if (printHeader) {
-        (printHeader as HTMLElement).style.display = originalHeaderDisplay || "";
-        (printHeader as HTMLElement).classList.add("hidden");
-      }
     } catch (pdfErr) {
-      console.error("Advanced client PDF extraction failed, returning to regular window print stream fallback:", pdfErr);
+      console.error("Native high-fidelity PDF render failed, falling back to window print stream:", pdfErr);
       window.print();
     } finally {
       setDownloadingPdf(false);

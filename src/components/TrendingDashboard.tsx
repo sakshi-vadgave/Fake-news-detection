@@ -86,12 +86,15 @@ export default function TrendingDashboard() {
 
       if (newsHubStatsList.length === 0) {
         newsHubStatsList = [
-          { id: "article-1", headline: "Bipartisan Committee Reaches Landmark Agreement on National Privacy Standard", category: "Politics", viewCount: 142, analyzeCount: 56 },
-          { id: "article-2", headline: "Silicon Valley Labs Announce Breakthrough 120-Qubit Quantum Computing Node", category: "Technology", viewCount: 98, analyzeCount: 34 },
-          { id: "article-3", headline: "Retail Giant Integrates Autonomous Logistics Vehicles in Ten Distribution Hubs", category: "Business", viewCount: 84, analyzeCount: 28 },
-          { id: "article-4", headline: "Marine Expedition Uncovers 45 Unrecorded Deep-Sea Species Near Marianas", category: "Science", viewCount: 120, analyzeCount: 15 },
-          { id: "article-5", headline: "Clinical Verification Completed for Peptide-Based Asthma Inhaler Compound", category: "Health", viewCount: 110, analyzeCount: 42 },
-          { id: "article-9", headline: "EXPOSED: Leading AI Labs Secretly Training Algorithms on Thought-Reading Vibrations", category: "Technology", viewCount: 182, analyzeCount: 91 }
+          { id: "article-1", headline: "Bipartisan Committee Reaches Landmark Agreement on National Privacy Standard", category: "Politics", viewCount: 142, analyzeCount: 56, label: "Trending" },
+          { id: "article-2", headline: "Silicon Valley Labs Announce Breakthrough 120-Qubit Quantum Computing Node", category: "Technology", viewCount: 98, analyzeCount: 34, label: "Popular" },
+          { id: "article-3", headline: "Retail Giant Integrates Autonomous Logistics Vehicles in Ten Distribution Hubs", category: "Business", viewCount: 84, analyzeCount: 28, label: "Recent" },
+          { id: "article-4", headline: "Marine Expedition Uncovers 45 Unrecorded Deep-Sea Species Near Marianas", category: "Science", viewCount: 120, analyzeCount: 15, label: "Rising" },
+          { id: "article-5", headline: "Clinical Verification Completed for Peptide-Based Asthma Inhaler Compound", category: "Health", viewCount: 110, analyzeCount: 42, label: "Popular" },
+          { id: "article-6", headline: "Major Cybersecurity Framework Released to Protect Public Cloud Infrastructure", category: "Technology", viewCount: 160, analyzeCount: 75, label: "Trending" },
+          { id: "article-7", headline: "Trade Delegation Finalizes Multi-Lateral Customs Modernization Accords", category: "Business", viewCount: 75, analyzeCount: 20, label: "Recent" },
+          { id: "article-8", headline: "Global Meteorological Observatory Records Steady Oceanic Temperature Fluctuations", category: "Science", viewCount: 95, analyzeCount: 30, label: "Rising" },
+          { id: "article-9", headline: "Health Authorities Deliver Recommendations for Seasonal Preventive Immunization", category: "Health", viewCount: 105, analyzeCount: 35, label: "Popular" }
         ];
       }
 
@@ -137,7 +140,7 @@ export default function TrendingDashboard() {
     return (
       <div className="flex flex-col items-center justify-center p-20 space-y-3" id="trending-dashboard">
         <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
-        <span className="text-sm font-bold text-slate-500">Retrieving Trending Disinformation Metrics...</span>
+        <span className="text-sm font-bold text-slate-500">Retrieving News Engagement Data...</span>
       </div>
     );
   }
@@ -156,6 +159,31 @@ export default function TrendingDashboard() {
 
   const COLORS = ["#10B981", "#EF4444", "#F59E0B", "#3B82F6", "#8B5CF6"];
 
+  const getQualitativeLabel = (item: any): string => {
+    if (item.label) return item.label;
+    const view = item.viewCount || 0;
+    const scans = item.analyzeCount || 0;
+    const sum = view + scans;
+    if (sum >= 180) return "Trending";
+    if (view >= 110) return "Popular";
+    if (view >= 90) return "Rising";
+    return "Recent";
+  };
+
+  const getLabelColor = (label: string): string => {
+    switch (label?.toLowerCase()) {
+      case "trending":
+        return "bg-amber-100 text-amber-800 border border-amber-200";
+      case "rising":
+        return "bg-emerald-100 text-emerald-800 border border-emerald-200";
+      case "popular":
+        return "bg-purple-100 text-purple-800 border border-purple-200";
+      case "recent":
+      default:
+        return "bg-slate-100 text-slate-700 border border-slate-200";
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 font-sans" id="trending-dashboard">
       
@@ -164,19 +192,24 @@ export default function TrendingDashboard() {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <TrendingUp className="w-8 h-8 text-blue-600" />
-            Trending Misinformation Hub
+            Media & News Literacy Engagement
           </h1>
           <p className="text-slate-500 text-sm">
-            Live analytics tracking common fake news categories, weekly fact-checked distribution ratios, and verification accuracy.
+            Factual engagement summaries, distribution splits across categories, and claim typology indices.
           </p>
         </div>
-        <button
-          onClick={fetchStats}
-          className="px-4 py-2 bg-white hover:bg-slate-50 border text-slate-600 text-xs font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm ml-auto md:ml-0"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          Synchronize Stats
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full select-none">
+            Demo Analytics
+          </span>
+          <button
+            onClick={fetchStats}
+            className="px-4 py-2 bg-white hover:bg-slate-50 border text-slate-600 text-xs font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refresh Feed
+          </button>
+        </div>
       </div>
 
       {/* ADMIN STAT CARD QUICK GRID */}
@@ -216,7 +249,7 @@ export default function TrendingDashboard() {
             <Award className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase block tracking-wider">Linguistic Accuracy</span>
+            <span className="text-[10px] text-slate-400 font-bold uppercase block tracking-wider">Verification Accuracy</span>
             <span className="text-xl font-extrabold text-emerald-600">{stats.accuracyRate}%</span>
           </div>
         </div>
@@ -227,9 +260,14 @@ export default function TrendingDashboard() {
         
         {/* CHART 1: WEEKLY DISTRIBUTION SPLIT (Area) */}
         <div className="bg-white p-6 border border-slate-200 rounded-3xl shadow-sm lg:col-span-8 flex flex-col space-y-4">
-          <div>
-            <h3 className="font-bold text-slate-800 text-[15px] tracking-tight">Weekly Fact check Outcomes</h3>
-            <p className="text-[11px] text-slate-400">Comparing verified factual indices to suspicious fabrications daily.</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-slate-800 text-[15px] tracking-tight">Weekly Fact check Outcomes</h3>
+              <p className="text-[11px] text-slate-400">Comparing verified factual indices to suspicious fabrications daily.</p>
+            </div>
+            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
+              Demo Analytics
+            </span>
           </div>
           <div className="h-[280px] w-full text-xs">
             <ResponsiveContainer width="100%" height="100%">
@@ -258,22 +296,25 @@ export default function TrendingDashboard() {
 
         {/* CHART 2: CATEGORIES OF SUSPICIOUS MEDIA (Pie) */}
         <div className="bg-white p-6 border border-slate-200 rounded-3xl shadow-sm lg:col-span-4 flex flex-col space-y-4">
-          <div>
+          <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-800 text-[15px] tracking-tight flex items-center gap-1.5">
               <PieIcon className="w-4 h-4 text-slate-500" />
               Claim Typology Categories
             </h3>
-            <p className="text-[11px] text-slate-400">Aggregate split of overall claim verifications.</p>
+            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
+              Demo
+            </span>
           </div>
-          <div className="h-[210px] w-full flex items-center justify-center text-xs">
+          <p className="text-[11px] text-slate-400">Aggregate split of overall claim verifications.</p>
+          <div className="h-[180px] w-full flex items-center justify-center text-xs">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={stats.categoryDistribution}
                   cx="50%"
                   cy="50%"
-                  innerRadius={65}
-                  outerRadius={85}
+                  innerRadius={55}
+                  outerRadius={75}
                   paddingAngle={3}
                   dataKey="value"
                 >
@@ -302,9 +343,14 @@ export default function TrendingDashboard() {
         
         {/* CHART 3: TOTAL CHRONICLED MONTHLY PROGRESS */}
         <div className="bg-white p-6 border border-slate-200 rounded-3xl shadow-sm md:col-span-7 flex flex-col space-y-4">
-          <div>
-            <h3 className="font-bold text-slate-800 text-[15px] tracking-tight">Chronicled Analysis Scale</h3>
-            <p className="text-[11px] text-slate-400">Month-over-month volume of tracked queries.</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-slate-800 text-[15px] tracking-tight">Chronicled Analysis Scale</h3>
+              <p className="text-[11px] text-slate-400">Month-over-month volume of tracked queries.</p>
+            </div>
+            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
+              Demo Analytics
+            </span>
           </div>
           <div className="h-[240px] w-full text-xs">
             <ResponsiveContainer width="100%" height="100%">
@@ -322,42 +368,47 @@ export default function TrendingDashboard() {
         {/* DYNAMIC CAMPAIGN FOCUS BOARD */}
         <div className="bg-white p-6 border border-slate-200 rounded-3xl shadow-sm md:col-span-5 flex flex-col justify-between">
           <div className="space-y-4">
-            <div>
-              <h3 className="font-bold text-slate-800 text-[15px] tracking-tight">Active Disinformation Campaigns</h3>
-              <p className="text-[11px] text-slate-400">Top propaganda focal points flagged in the last 48 hours.</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-800 text-[15px] tracking-tight">Active Education Campaigns</h3>
+                <p className="text-[11px] text-slate-400">Top media training & feedback initiatives active this week.</p>
+              </div>
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 bg-amber-50 text-amber-700 rounded-md shrink-0">
+                Demo
+              </span>
             </div>
             
             <div className="space-y-3.5">
               <div className="flex justify-between items-start text-xs border-b border-slate-100 pb-2">
                 <div className="space-y-0.5">
-                  <span className="font-bold text-slate-700 block">Organic Medical Clones</span>
-                  <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-full w-fit block mt-1">High Risk State</span>
+                  <span className="font-bold text-slate-700 block">Digital Verification Seminars</span>
+                  <span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 py-0.5 rounded-full w-fit block mt-1">Active Class</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-mono font-bold text-slate-800 block">412 flags</span>
-                  <span className="text-[10px] text-slate-400 leading-normal block">Weekly surge</span>
+                  <span className="font-bold text-slate-800 block">Weekly Highlight</span>
+                  <span className="text-[10px] text-slate-405 leading-normal block">Technology</span>
                 </div>
               </div>
 
               <div className="flex justify-between items-start text-xs border-b border-slate-100 pb-2">
                 <div className="space-y-0.5">
-                  <span className="font-bold text-slate-700 block">Artificial Solar Polar Flare panic</span>
-                  <span className="text-[10px] text-amber-500 font-bold bg-amber-50 px-2 py-0.5 rounded-full w-fit block mt-1">Medium Risk State</span>
+                  <span className="font-bold text-slate-700 block">Evaluating Algorithmic Feeds</span>
+                  <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full w-fit block mt-1">Curriculum Launch</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-mono font-bold text-slate-800 block">280 flags</span>
-                  <span className="text-[10px] text-slate-400 leading-normal block">Decelerating</span>
+                  <span className="font-bold text-slate-800 block">In Progress</span>
+                  <span className="text-[10px] text-slate-405 leading-normal block">Media Literacy</span>
                 </div>
               </div>
 
               <div className="flex justify-between items-start text-xs rounded-xl">
                 <div className="space-y-0.5">
-                  <span className="font-bold text-slate-700 block">Fake Candidate X Event Snub coordinates</span>
-                  <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-full w-fit block mt-1">Severe Risk State</span>
+                  <span className="font-bold text-slate-700 block">Navigating Clinical/Health Reports</span>
+                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full w-fit block mt-1">Scientific Clarity</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-mono font-bold text-slate-800 block">194 flags</span>
-                  <span className="text-[10px] text-slate-400 leading-normal block">Accelerating</span>
+                  <span className="font-bold text-slate-800 block">Syllabus Complete</span>
+                  <span className="text-[10px] text-slate-405 leading-normal block">Science & Health</span>
                 </div>
               </div>
             </div>
@@ -366,7 +417,7 @@ export default function TrendingDashboard() {
           <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-2xl flex items-center gap-3 mt-4">
             <Award className="w-7 h-7 text-emerald-600 shrink-0" />
             <p className="text-[11px] leading-relaxed font-semibold">
-              TruthLens tracks global fact checked indexes every 2 hours to calibrate matching accuracy ratios.
+              These simulations and learning markers update each session to display the full potential of regional tracking.
             </p>
           </div>
         </div>
@@ -375,101 +426,125 @@ export default function TrendingDashboard() {
 
       {/* REAL-TIME NEWS HUB CLICKS & ENGAGEMENT METRICS */}
       <div className="bg-white p-6 md:p-8 border border-slate-200 rounded-3xl shadow-sm space-y-6">
-        <div className="space-y-1">
-          <h3 className="font-extrabold text-slate-950 text-lg tracking-tight">
-            Latest News Hub Click-Through & Engagement Metrics
-          </h3>
-          <p className="text-xs text-slate-500">
-            Realtime activity telemetry measuring exactly which stories interest observers and prompt automated AI verification.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="space-y-1">
+            <h3 className="font-extrabold text-slate-950 text-lg tracking-tight">
+              Latest News Hub Engagement & Spotlight Categories
+            </h3>
+            <p className="text-xs text-slate-500">
+              Assigned qualitative parameters evaluating key topical beats in Technology, Politics, Health, Science, and Business.
+            </p>
+          </div>
+          <span className="w-fit text-[11px] font-extrabold px-2.5 py-1 bg-slate-100 text-slate-650 border border-slate-200 rounded-full select-none shrink-0">
+            Demo Analytics
+          </span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Card 1: Most Viewed articles */}
+          {/* Card 1: Trending Spotlights */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
               <Eye className="w-4 h-4 text-slate-500" />
-              <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider font-mono">Most Viewed Hot Stories</h4>
+              <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider font-mono">Trending & Popular Spotlights</h4>
             </div>
             
-            <div className="space-y-3.5">
-              {stats.mostViewed?.map((item: any) => (
-                <div key={item.id} className="space-y-1.5 text-xs">
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="font-bold text-slate-700 line-clamp-2 leading-snug">
+            <div className="space-y-3">
+              {stats.mostViewed?.map((item: any) => {
+                const label = item.label || getQualitativeLabel(item);
+                return (
+                  <div key={item.id} className="p-3.5 bg-slate-50 hover:bg-slate-100/75 border border-slate-100 rounded-2xl space-y-2.5 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[9px] font-mono font-black text-slate-400 bg-white border border-slate-100 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                        {item.category}
+                      </span>
+                      <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${getLabelColor(label)}`}>
+                        {label}
+                      </span>
+                    </div>
+                    <p className="font-bold text-slate-800 text-xs leading-relaxed line-clamp-2">
                       {item.headline}
-                    </span>
-                    <span className="font-mono font-extrabold text-slate-850 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md whitespace-nowrap">
-                      {item.viewCount || 0} views
-                    </span>
+                    </p>
                   </div>
-                  {/* Miniature progress bar represent ratio */}
-                  <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500 rounded-full"
-                      style={{ width: `${Math.min(((item.viewCount || 0) / 182) * 105, 100)}%` }}
-                    />
-                  </div>
-                  <span className="text-[9px] font-mono font-extrabold text-slate-400 uppercase tracking-widest">{item.category}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* Card 2: Most Screened Claims */}
+          {/* Card 2: Recent Audiences */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
               <TrendingUp className="w-4 h-4 text-blue-500" />
-              <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider font-mono font-semibold">Most Screened Claims</h4>
+              <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider font-mono">Audited & Rising Topics</h4>
             </div>
 
-            <div className="space-y-3.5">
-              {stats.mostAnalyzed?.map((item: any) => (
-                <div key={item.id} className="space-y-1.5 text-xs">
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="font-bold text-slate-700 line-clamp-2 leading-snug">
+            <div className="space-y-3">
+              {stats.mostAnalyzed?.map((item: any) => {
+                const label = item.label || getQualitativeLabel(item);
+                return (
+                  <div key={item.id} className="p-3.5 bg-slate-50 hover:bg-slate-100/75 border border-slate-100 rounded-2xl space-y-2.5 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[9px] font-mono font-black text-slate-400 bg-white border border-slate-100 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                        {item.category}
+                      </span>
+                      <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${getLabelColor(label)}`}>
+                        {label}
+                      </span>
+                    </div>
+                    <p className="font-bold text-slate-800 text-xs leading-relaxed line-clamp-2">
                       {item.headline}
-                    </span>
-                    <span className="font-mono font-extrabold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md whitespace-nowrap">
-                      {item.analyzeCount || 0} scans
-                    </span>
+                    </p>
                   </div>
-                  {/* Miniature progress bar represent ratio */}
-                  <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-600 rounded-full"
-                      style={{ width: `${Math.min(((item.analyzeCount || 0) / 91) * 105, 100)}%` }}
-                    />
-                  </div>
-                  <span className="text-[9px] font-mono font-extrabold text-slate-400 uppercase tracking-widest">{item.category}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* Card 3: Trending Categories Progress ratios */}
+          {/* Card 3: Categorized Engagements */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
               <Compass className="w-4 h-4 text-teal-400" />
-              <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider font-mono">Engagement by Category</h4>
+              <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider font-mono">Subject Engagement Ratios</h4>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4.5 pt-1">
               {stats.trendingCategories?.map((item: any) => {
-                const totalInterestUnits = item.value;
-                const percent = Math.min((totalInterestUnits / 273) * 100, 100);
+                // Determine a nice qualitative rating
+                let scaleText = "Moderate";
+                let scaleColor = "text-slate-500";
+                let indicatorColor = "bg-slate-400";
+                let pctWidth = 50;
+
+                if (item.name === "Technology") {
+                  scaleText = "Critical";
+                  scaleColor = "text-rose-600";
+                  indicatorColor = "bg-rose-500";
+                  pctWidth = 92;
+                } else if (item.name === "Politics") {
+                  scaleText = "Elevated";
+                  scaleColor = "text-amber-600";
+                  indicatorColor = "bg-amber-500";
+                  pctWidth = 78;
+                } else if (item.name === "Health" || item.name === "Science") {
+                  scaleText = "Substantial";
+                  scaleColor = "text-emerald-600";
+                  indicatorColor = "bg-emerald-500";
+                  pctWidth = 65;
+                } else {
+                  pctWidth = 40;
+                }
+
                 return (
-                  <div key={item.name} className="space-y-1.5 text-xs">
+                  <div key={item.name} className="space-y-2 text-xs">
                     <div className="flex items-center justify-between font-bold">
                       <span className="text-slate-700">{item.name}</span>
-                      <span className="font-mono text-slate-500">{totalInterestUnits} units</span>
+                      <span className={`font-mono text-[10px] uppercase font-black ${scaleColor}`}>{scaleText} Engagement</span>
                     </div>
                     {/* Visual Segmented Progress indicators */}
-                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-teal-500 rounded-full transition-all duration-500"
-                        style={{ width: `${percent}%` }}
+                        className={`h-full ${indicatorColor} rounded-full transition-all duration-500`}
+                        style={{ width: `${pctWidth}%` }}
                       />
                     </div>
                   </div>
@@ -481,9 +556,8 @@ export default function TrendingDashboard() {
         </div>
 
         {/* Informative alert foot */}
-        <div className="p-3.5 bg-slate-50 border rounded-2xl flex items-center justify-between text-[11px] text-slate-500 font-semibold md:flex-row flex-col gap-2">
-          <span>* Stats update dynamically in real time and are recorded using durable cloud collection documents.</span>
-          <span className="text-blue-600 font-bold font-mono">Active Node Collection Online</span>
+        <div className="p-4 bg-slate-50 border rounded-2xl text-[11px] text-slate-500 font-semibold text-center select-none">
+          * Demo Analytics: These statistics represent simulated media literacy engagement data configured explicitly for demonstration purposes.
         </div>
       </div>
 
