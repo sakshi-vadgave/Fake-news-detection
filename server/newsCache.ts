@@ -219,17 +219,43 @@ function getCuratedFallbacks(category: string): NewsArticle[] {
 }
 
 // Fetch helper from GNews API with graceful, high-quality curated fallbacks
+interface CacheEntry {
+  data: { articles: NewsArticle[]; source: "API" | "CuratedFallback"; timestamp: string };
+  fetchedAt: number;
+}
+
+const newsCache: Record<string, CacheEntry> = {};
+const CACHE_SUCCESS_TTL = 15 * 60 * 1000; // 15 minutes for successful GNews API hits
+const CACHE_FALLBACK_TTL = 5 * 60 * 1000;  // 5 minutes for CuratedFallbacks (safeguards against GNews rate limit exhaustion)
+
 export async function fetchLiveNews(category: string): Promise<{ articles: NewsArticle[]; source: "API" | "CuratedFallback"; timestamp: string }> {
+  const normCategory = category.trim().toLowerCase();
   const apiCategory = getApiCategory(category);
   const GNEWS_KEY = process.env.GNEWS_API_KEY;
 
+  // 1. Check if we have a valid cached entry (prevent 429 rate limits)
+  const now = Date.now();
+  const cached = newsCache[normCategory];
+  if (cached) {
+    const ttl = cached.data.source === "API" ? CACHE_SUCCESS_TTL : CACHE_FALLBACK_TTL;
+    if (now - cached.fetchedAt < ttl) {
+      console.log(`[GNEWS PROXY] Returning cached news for category: ${category} (Source: ${cached.data.source}, age: ${Math.round((now - cached.fetchedAt) / 1000)}s)`);
+      return cached.data;
+    }
+  }
+
   if (!GNEWS_KEY || GNEWS_KEY.trim().length === 0 || GNEWS_KEY.trim() === "MY_GNEWS_API_KEY") {
     console.warn(`[GNEWS PROXY] GNEWS_API_KEY environment variable is not defined or is placeholder. Using high-quality curated Indian fallback news.`);
-    return {
+    const fallbackResult = {
       articles: getCuratedFallbacks(category),
-      source: "CuratedFallback",
+      source: "CuratedFallback" as const,
       timestamp: new Date().toISOString()
     };
+    newsCache[normCategory] = {
+      data: fallbackResult,
+      fetchedAt: now
+    };
+    return fallbackResult;
   }
 
   try {
@@ -248,7 +274,6 @@ export async function fetchLiveNews(category: string): Promise<{ articles: NewsA
     }
 
     const rawArticles = data.articles;
-    const now = Date.now();
     const fortyEightHoursMs = 48 * 60 * 60 * 1000;
 
     // 1. Remove articles with missing titles
@@ -293,11 +318,16 @@ export async function fetchLiveNews(category: string): Promise<{ articles: NewsA
     // If API returned empty but valid array (e.g. no news found in last 48h), fallback to curated
     if (mapped.length === 0) {
       console.log(`[GNEWS PROXY] API returned 0 results for ${category}. Returning curated fallbacks.`);
-      return {
+      const emptyFallbackResult = {
         articles: getCuratedFallbacks(category),
-        source: "CuratedFallback",
+        source: "CuratedFallback" as const,
         timestamp: new Date().toISOString()
       };
+      newsCache[normCategory] = {
+        data: emptyFallbackResult,
+        fetchedAt: now
+      };
+      return emptyFallbackResult;
     }
 
     // 6. Sort articles by newest publication time first
@@ -306,18 +336,33 @@ export async function fetchLiveNews(category: string): Promise<{ articles: NewsA
     // 7. Max 20 articles per category
     const sliced = mapped.slice(0, 20);
 
-    return {
+    const apiResult = {
       articles: sliced,
-      source: "API",
+      source: "API" as const,
       timestamp: new Date().toISOString()
     };
+
+    newsCache[normCategory] = {
+      data: apiResult,
+      fetchedAt: now
+    };
+
+    return apiResult;
   } catch (err: any) {
     console.warn(`[GNEWS PROXY] Error fetching from GNews API: ${err.message}. Gracefully falling back to curated Indian news fallbacks.`);
-    return {
+    const errorFallbackResult = {
       articles: getCuratedFallbacks(category),
-      source: "CuratedFallback",
+      source: "CuratedFallback" as const,
       timestamp: new Date().toISOString()
     };
+    
+    // Cache the fallback so we don't bombard GNews during rate limiting (temporary cooldown cache)
+    newsCache[normCategory] = {
+      data: errorFallbackResult,
+      fetchedAt: now
+    };
+
+    return errorFallbackResult;
   }
 }
 

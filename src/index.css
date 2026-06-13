@@ -7,6 +7,17 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* Root font scaling for premium projector/screen presentation readability */
+html {
+  font-size: 17.5px; /* Boost baseline body readability by ~10% for presentations */
+}
+
+@media (min-width: 1536px) {
+  html {
+    font-size: 19px; /* Extra magnification scale on very large screens/projectors */
+  }
+}
+
 /* Global transitions to smooth the light/dark transition (300ms) */
 html, body, div, section, p, h1, h2, h3, h4, h5, h6, nav, footer, button, span, input, textarea, select {
   transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1), 
