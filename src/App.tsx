@@ -143,7 +143,7 @@ export default function App() {
           />
         );
       case "trends":
-        return <TrendingDashboard />;
+        return <TrendingDashboard token={token || ""} />;
       case "learning":
         return (
           <LearningCenter

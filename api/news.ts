@@ -8,11 +8,12 @@ export default async function handler(req: any, res: any) {
 
     res.status(200).json(result);
   } catch (err: any) {
-  console.error(err);
+    console.error(err);
 
-  return res.status(200).json({
-    articles: [],
-    source: "Fallback",
-    timestamp: new Date().toISOString()
-  });
+    return res.status(200).json({
+      articles: [],
+      source: "Fallback",
+      timestamp: new Date().toISOString()
+    });
+  }
 }
