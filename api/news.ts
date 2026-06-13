@@ -1,4 +1,4 @@
-import { fetchLiveNews } from "../server/newsCache";
+import { fetchLiveNews } from "../server/newsCache.ts";
 
 export default async function handler(req: any, res: any) {
   try {
