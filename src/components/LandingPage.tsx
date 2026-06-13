@@ -14,7 +14,7 @@ interface LandingPageProps {
 export default function LandingPage({ setTab, openLoginModal, user, onAnalyzeNews }: LandingPageProps) {
   // Temporary switch to enable/disable the Verified Indian News Feed section.
   // Set to true to re-enable, false to temporarily hide it without deleting any code.
-  const SHOW_NEWS_FEED = false;
+  const SHOW_NEWS_FEED = true;
 
   const [openFaqIndex, setOpenFaqIndex] = React.useState<number | null>(null);
   const [logoError, setLogoError] = React.useState(false);
