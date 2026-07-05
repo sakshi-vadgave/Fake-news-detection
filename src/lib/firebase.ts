@@ -4,7 +4,34 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
+// Construct config dynamically using environment variables to keep secrets safe in Git/GitHub
+const dynamicConfig = {
+  apiKey: (import.meta as any).env.VITE_FIREBASE_API_KEY || firebaseConfig.apiKey,
+  authDomain: (import.meta as any).env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain,
+  projectId: (import.meta as any).env.VITE_FIREBASE_PROJECT_ID || firebaseConfig.projectId,
+  storageBucket: (import.meta as any).env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfig.storageBucket,
+  messagingSenderId: (import.meta as any).env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfig.messagingSenderId,
+  appId: (import.meta as any).env.VITE_FIREBASE_APP_ID || firebaseConfig.appId,
+  firestoreDatabaseId: (import.meta as any).env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || firebaseConfig.firestoreDatabaseId,
+};
+
+const hasValidConfig = dynamicConfig.apiKey && dynamicConfig.apiKey !== "PLACEHOLDER_API_KEY";
+
+if (!hasValidConfig) {
+  console.warn(
+    "[Firebase] WARNING: Firebase Client Web API Key is missing or using placeholder values. " +
+    "Verify your environment variables are set correctly."
+  );
+}
+
+const app = initializeApp({
+  apiKey: hasValidConfig ? dynamicConfig.apiKey : "PLACEHOLDER_KEY",
+  authDomain: dynamicConfig.authDomain,
+  projectId: dynamicConfig.projectId,
+  storageBucket: dynamicConfig.storageBucket,
+  messagingSenderId: dynamicConfig.messagingSenderId,
+  appId: dynamicConfig.appId,
+});
 
 // CRITICAL: Initialize Firestore with persistent storage and force long-polling for environments with restricted WebSocket capabilities
 export const db = initializeFirestore(app, {
@@ -12,7 +39,7 @@ export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()
   })
-}, firebaseConfig.firestoreDatabaseId);
+}, dynamicConfig.firestoreDatabaseId);
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);

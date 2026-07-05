@@ -1,8 +1,14 @@
 import React from "react";
-import { X, Mail, Lock, User, ShieldCheck } from "lucide-react";
+import { X, Mail, Lock, User, ShieldCheck, Chrome } from "lucide-react";
 import { auth, db } from "../lib/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  updateProfile, 
+  GoogleAuthProvider, 
+  signInWithPopup 
+} from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -44,10 +50,17 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
         };
         await setDoc(userDocRef, userData);
 
-        // Notify user registry succeeded
-        setIsRegister(false);
-        setPassword("");
-        setError("Registration complete! Please enter your password to sign in.");
+        // Auto log in user and invoke onSuccess
+        onSuccess(
+          {
+            id: firebaseUser.uid,
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            createdAt: userData.createdAt
+          },
+          firebaseUser.uid
+        );
+        onClose();
       } else {
         // Sign in user in firebase auth
         const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
@@ -76,6 +89,57 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
         errMsg = "Incorrect email address or password.";
       } else if (err.code === "auth/invalid-email") {
         errMsg = "Invalid email format.";
+      } else if (err.code === "auth/popup-closed-by-user") {
+        errMsg = "Sign-in popup closed before completion.";
+      } else if (err.code === "auth/cancelled-popup-request") {
+        errMsg = "Sign-in popup cancelled.";
+      }
+      setError(errMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      // Create doc in firestore 'users' collection if not exists
+      const userDocRef = doc(db, "users", firebaseUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      let profileData = userDocSnap.exists() ? userDocSnap.data() : null;
+      if (!profileData) {
+        profileData = {
+          name: firebaseUser.displayName || "TruthLens Auditor",
+          email: firebaseUser.email || "",
+          profilePhoto: firebaseUser.photoURL || "",
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(userDocRef, profileData);
+      }
+
+      onSuccess(
+        {
+          id: firebaseUser.uid,
+          name: profileData.name,
+          email: profileData.email,
+          createdAt: profileData.createdAt
+        },
+        firebaseUser.uid
+      );
+      onClose();
+    } catch (err: any) {
+      console.error("Google login error:", err);
+      let errMsg = err.message || "Failed to sign in with Google";
+      if (err.code === "auth/popup-closed-by-user") {
+        errMsg = "Sign-in popup closed before completion.";
+      } else if (err.code === "auth/cancelled-popup-request") {
+        errMsg = "Sign-in popup cancelled.";
       }
       setError(errMsg);
     } finally {
@@ -172,6 +236,27 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
             {loading ? "Authenticating..." : isRegister ? "Create Account" : "Sign In"}
           </button>
         </form>
+
+        {/* Divider */}
+        <div className="relative my-5">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-slate-200"></div>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-slate-500 font-bold">Or continue with</span>
+          </div>
+        </div>
+
+        {/* Google Authentication Button */}
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+          className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 font-bold text-slate-700 rounded-xl shadow-sm active:scale-[0.98] text-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+        >
+          <Chrome className="w-4 h-4 text-rose-500 shrink-0" />
+          <span>Continue with Google</span>
+        </button>
 
         {/* Footer Toggle */}
         <div className="text-center mt-6 pt-5 border-t border-slate-100">
