@@ -14,16 +14,28 @@ if (typeof window !== "undefined" && !globalConfig) {
     xhr.open("GET", "/api/firebase-config", false);
     xhr.send();
     if (xhr.status === 200) {
-      globalConfig = JSON.parse(xhr.responseText);
-      (window as any).FIREBASE_CONFIG = globalConfig;
+      const responseData = JSON.parse(xhr.responseText);
+      // Ensure the response isn't HTML fallback
+      if (responseData && typeof responseData === "object" && responseData.apiKey) {
+        globalConfig = responseData;
+        (window as any).FIREBASE_CONFIG = globalConfig;
+      }
     }
   } catch (err) {
-    console.error("[Firebase Config Fallback] Synchronous config load failed:", err);
+    // Silent fallback
   }
 }
 
-if (!globalConfig) {
-  globalConfig = {};
+// 2. Fallback: Try to read from build-time Vite glob of the firebase-applet-config.json file if available
+let buildTimeFileConfig: any = {};
+try {
+  const configFiles = import.meta.glob('../../firebase-applet-config.json', { eager: true });
+  const matchedFile = Object.values(configFiles)[0] as any;
+  if (matchedFile && matchedFile.default) {
+    buildTimeFileConfig = matchedFile.default;
+  }
+} catch (e) {
+  // Silent fallback
 }
 
 // Helper to clean environment and config string values, removing any surrounding quotes or placeholder text
@@ -34,15 +46,18 @@ const cleanValue = (val: any): string => {
   return cleaned;
 };
 
-// Construct config dynamically using the server-served runtime configuration
+// Construct config dynamically, prioritizing:
+// 1. Runtime server config (if full-stack is active)
+// 2. Build-time file config (firebase-applet-config.json bundled by Vite)
+// 3. Vite environment variables (VITE_FIREBASE_...)
 const dynamicConfig = {
-  apiKey: cleanValue(globalConfig.apiKey),
-  authDomain: cleanValue(globalConfig.authDomain),
-  projectId: cleanValue(globalConfig.projectId),
-  storageBucket: cleanValue(globalConfig.storageBucket),
-  messagingSenderId: cleanValue(globalConfig.messagingSenderId),
-  appId: cleanValue(globalConfig.appId),
-  firestoreDatabaseId: cleanValue(globalConfig.firestoreDatabaseId),
+  apiKey: cleanValue(globalConfig?.apiKey) || cleanValue(buildTimeFileConfig?.apiKey) || cleanValue(import.meta.env.VITE_FIREBASE_API_KEY),
+  authDomain: cleanValue(globalConfig?.authDomain) || cleanValue(buildTimeFileConfig?.authDomain) || cleanValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+  projectId: cleanValue(globalConfig?.projectId) || cleanValue(buildTimeFileConfig?.projectId) || cleanValue(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket: cleanValue(globalConfig?.storageBucket) || cleanValue(buildTimeFileConfig?.storageBucket) || cleanValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: cleanValue(globalConfig?.messagingSenderId) || cleanValue(buildTimeFileConfig?.messagingSenderId) || cleanValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId: cleanValue(globalConfig?.appId) || cleanValue(buildTimeFileConfig?.appId) || cleanValue(import.meta.env.VITE_FIREBASE_APP_ID),
+  firestoreDatabaseId: cleanValue(globalConfig?.firestoreDatabaseId) || cleanValue(buildTimeFileConfig?.firestoreDatabaseId) || cleanValue(import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID),
 };
 
 const hasValidConfig = !!dynamicConfig.apiKey;
