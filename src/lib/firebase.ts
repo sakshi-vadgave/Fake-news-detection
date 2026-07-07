@@ -3,7 +3,9 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import firebaseConfig from '../../firebase-applet-config.json';
+// Safely load the firebase config file using glob pattern to prevent rollup build failures if the file is missing in deployment pipelines
+const configFiles = import.meta.glob('../../firebase-applet-config.json', { eager: true });
+const firebaseConfig = (Object.values(configFiles)[0] as any)?.default || {};
 
 // Helper to clean environment and config string values, removing any surrounding quotes or placeholder text
 const cleanValue = (val: any): string => {
