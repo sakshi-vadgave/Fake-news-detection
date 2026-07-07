@@ -4,7 +4,27 @@ import { getAuth } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 // Retrieve the dynamic Firebase configuration served by the server from window.FIREBASE_CONFIG
-const globalConfig = (typeof window !== "undefined" ? (window as any).FIREBASE_CONFIG : null) || {};
+let globalConfig = (typeof window !== "undefined" ? (window as any).FIREBASE_CONFIG : null);
+
+// Fail-safe synchronous fallback: If window.FIREBASE_CONFIG is not loaded yet, fetch it synchronously!
+if (typeof window !== "undefined" && !globalConfig) {
+  try {
+    const xhr = new XMLHttpRequest();
+    // Synchronous request guarantees config is populated before Firebase initialization continues
+    xhr.open("GET", "/api/firebase-config", false);
+    xhr.send();
+    if (xhr.status === 200) {
+      globalConfig = JSON.parse(xhr.responseText);
+      (window as any).FIREBASE_CONFIG = globalConfig;
+    }
+  } catch (err) {
+    console.error("[Firebase Config Fallback] Synchronous config load failed:", err);
+  }
+}
+
+if (!globalConfig) {
+  globalConfig = {};
+}
 
 // Helper to clean environment and config string values, removing any surrounding quotes or placeholder text
 const cleanValue = (val: any): string => {

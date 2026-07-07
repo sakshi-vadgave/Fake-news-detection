@@ -6,7 +6,7 @@ import { createServer as createViteServer } from "vite";
 import { analyzeNewsContent, getChatbotResponse, extractTextFromImage, generateNewsFeedAudit } from "./server/gemini.js";
 import { fetchLiveNews } from "./server/newsCache.js";
 
-dotenv.config();
+dotenv.config({ override: true });
 
 async function startServer() {
   const app = express();
@@ -49,6 +49,31 @@ async function startServer() {
 
     res.setHeader("Content-Type", "application/javascript");
     res.send(`window.FIREBASE_CONFIG = ${JSON.stringify(finalConfig)};`);
+  });
+
+  // Serve Firebase config as JSON directly for synchronous fallback fetching
+  app.get("/api/firebase-config", (req, res) => {
+    let fileConfig: any = {};
+    try {
+      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+      if (fs.existsSync(configPath)) {
+        fileConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+      }
+    } catch (err) {
+      console.warn("Failed to read firebase-applet-config.json:", err);
+    }
+
+    const finalConfig = {
+      apiKey: fileConfig.apiKey || process.env.VITE_FIREBASE_API_KEY || "",
+      authDomain: fileConfig.authDomain || process.env.VITE_FIREBASE_AUTH_DOMAIN || "",
+      projectId: fileConfig.projectId || process.env.VITE_FIREBASE_PROJECT_ID || "",
+      storageBucket: fileConfig.storageBucket || process.env.VITE_FIREBASE_STORAGE_BUCKET || "",
+      messagingSenderId: fileConfig.messagingSenderId || process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+      appId: fileConfig.appId || process.env.VITE_FIREBASE_APP_ID || "",
+      firestoreDatabaseId: fileConfig.firestoreDatabaseId || process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "",
+    };
+
+    res.json(finalConfig);
   });
 
   // Secure news proxy endpoint (returns filtered, sorted, non-AI real news)
