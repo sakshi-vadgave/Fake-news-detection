@@ -18,6 +18,25 @@ export default function UserProfile({ user, setTab, token }: UserProfileProps) {
   React.useEffect(() => {
     const fetchProgress = async () => {
       if (!token) return;
+      if (token.startsWith("demo-")) {
+        const localProg = localStorage.getItem("truthlens_quiz_progress");
+        if (localProg) {
+          try {
+            setProfileProgress(JSON.parse(localProg));
+          } catch {
+            setProfileProgress({
+              completedModules: [],
+              certified: false
+            });
+          }
+        } else {
+          setProfileProgress({
+            completedModules: [],
+            certified: false
+          });
+        }
+        return;
+      }
       try {
         const docRef = doc(db, "quizProgress", token);
         const docSnap = await getDoc(docRef);

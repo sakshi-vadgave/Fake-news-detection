@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, Mic, MicOff, Trash2, FileText, UploadCloud, AlertCircle, RefreshCw, Send, HelpCircle, Camera, X, Image, Sparkles } from "lucide-react";
+import { Search, Mic, MicOff, Trash2, FileText, UploadCloud, AlertCircle, RefreshCw, Send, HelpCircle, Camera, X, Image, Sparkles, Lock } from "lucide-react";
 import { db, storage, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -14,6 +14,7 @@ interface NewsAnalyzerProps {
   initialUrl?: string;
   autoAnalyze?: boolean;
   onClearPrefill?: () => void;
+  openLoginModal: () => void;
 }
 
 export default function NewsAnalyzer({ 
@@ -24,7 +25,8 @@ export default function NewsAnalyzer({
   initialContent = "",
   initialUrl = "",
   autoAnalyze = false,
-  onClearPrefill
+  onClearPrefill,
+  openLoginModal
 }: NewsAnalyzerProps) {
   const [content, setContent] = React.useState(initialContent);
   const [headline, setHeadline] = React.useState(initialHeadline);
@@ -494,20 +496,36 @@ export default function NewsAnalyzer({
           explanationDetails: data.explanationDetails || { keywords: [], manipulationTactics: [], unsupportedPhrases: [] },
           isFavorite: false
         };
-        try {
-          const docRef = await addDoc(collection(db, "analysisHistory"), payloadData);
+        if (token.startsWith("demo-")) {
+          const newId = "demo-hist-" + Date.now();
           finalResult = {
-            id: docRef.id,
+            id: newId,
             ...payloadData
           };
-        } catch (dbErr: any) {
-          console.error("Failed to store verification record in Firestore:", dbErr);
-          handleFirestoreError(dbErr, OperationType.CREATE, "analysisHistory");
-          // Fallback to guest id if firestore write fails but evaluation succeeded
-          finalResult = {
-            id: "guest-db-fail-" + Date.now(),
-            ...payloadData
-          };
+          try {
+            const localHistory = localStorage.getItem("truthlens_demo_history");
+            const historyList = localHistory ? JSON.parse(localHistory) : [];
+            historyList.unshift(finalResult);
+            localStorage.setItem("truthlens_demo_history", JSON.stringify(historyList));
+          } catch (e) {
+            console.error("Failed to write to demo local storage history:", e);
+          }
+        } else {
+          try {
+            const docRef = await addDoc(collection(db, "analysisHistory"), payloadData);
+            finalResult = {
+              id: docRef.id,
+              ...payloadData
+            };
+          } catch (dbErr: any) {
+            console.error("Failed to store verification record in Firestore:", dbErr);
+            handleFirestoreError(dbErr, OperationType.CREATE, "analysisHistory");
+            // Fallback to guest id if firestore write fails but evaluation succeeded
+            finalResult = {
+              id: "guest-db-fail-" + Date.now(),
+              ...payloadData
+            };
+          }
         }
       } else {
         finalResult = {
@@ -547,6 +565,52 @@ export default function NewsAnalyzer({
     setError("");
     setUploadStatus("");
   };
+
+  if (!token) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-12 space-y-8" id="news-analyzer">
+        {/* Title block */}
+        <div className="text-center space-y-2 animate-in fade-in slide-in-from-top-4 duration-500">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">AI News Checker & Fact-Auditor</h1>
+          <p className="text-slate-500 text-sm max-w-2xl mx-auto">
+            Audit full articles, blog posts, viral media screenshots, or digital links. Paste text or record audio, and let TruthLens isolate logical fallacies.
+          </p>
+        </div>
+
+        {/* Lock Gate */}
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 md:p-12 text-center max-w-2xl mx-auto space-y-6 shadow-sm animate-in fade-in zoom-in-95 duration-500">
+          <div className="mx-auto w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
+            <Lock className="w-8 h-8" />
+          </div>
+          
+          <div className="space-y-2">
+            <h2 className="text-xl md:text-2xl font-bold text-slate-800">Verification Access Restricted</h2>
+            <p className="text-slate-500 text-sm leading-relaxed">
+              TruthLens employs advanced multi-layer neural model checks to analyze political bias, identify logical manipulation, and cross-reference citations. 
+            </p>
+            <p className="text-slate-600 font-semibold text-sm">
+              Please sign in to run automated AI news audits and access the analyzer dashboard.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <button
+              onClick={openLoginModal}
+              className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg hover:shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer text-sm"
+            >
+              Sign In to TruthLens
+            </button>
+            <button
+              onClick={() => setTab("landing")}
+              className="w-full sm:w-auto px-6 py-3 bg-white hover:bg-slate-50 text-slate-700 font-semibold border border-slate-200 rounded-xl transition-all cursor-pointer text-sm"
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8" id="news-analyzer">

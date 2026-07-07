@@ -232,6 +232,27 @@ export default function LearningCenter({ token, user, openLoginModal }: Learning
 
   const fetchProgress = async () => {
     if (!token) return;
+    if (token.startsWith("demo-")) {
+      const localProg = localStorage.getItem("truthlens_quiz_progress");
+      if (localProg) {
+        try {
+          setDbProgress(JSON.parse(localProg));
+        } catch {
+          setDbProgress({
+            completedModules: [],
+            quizScores: {},
+            certified: false
+          });
+        }
+      } else {
+        setDbProgress({
+          completedModules: [],
+          quizScores: {},
+          certified: false
+        });
+      }
+      return;
+    }
     try {
       const docRef = doc(db, "quizProgress", token);
       const docSnap = await getDoc(docRef);
@@ -281,14 +302,41 @@ export default function LearningCenter({ token, user, openLoginModal }: Learning
     if (!token || !activeMod) return;
     setSyncing(true);
     try {
-      const docRef = doc(db, "quizProgress", token);
-      const docSnap = await getDoc(docRef);
-      
       let currentProgress = {
         completedModules: [] as string[],
         quizScores: {} as { [key: string]: number },
         certified: false
       };
+
+      if (token.startsWith("demo-")) {
+        const localProg = localStorage.getItem("truthlens_quiz_progress");
+        if (localProg) {
+          try {
+            Object.assign(currentProgress, JSON.parse(localProg));
+          } catch {}
+        }
+        
+        currentProgress.quizScores[activeMod.id] = finalScore;
+        const passRatio = finalScore / activeMod.quiz.length;
+        const isPassed = passRatio >= 0.7;
+
+        if (isPassed && !currentProgress.completedModules.includes(activeMod.id)) {
+          currentProgress.completedModules.push(activeMod.id);
+        }
+        
+        const allModules = ["mod-1", "mod-2", "mod-3", "mod-4"];
+        const allPassed = allModules.every(modId => currentProgress.completedModules.includes(modId));
+        if (allPassed) {
+          currentProgress.certified = true;
+        }
+
+        localStorage.setItem("truthlens_quiz_progress", JSON.stringify(currentProgress));
+        setDbProgress(currentProgress);
+        return;
+      }
+
+      const docRef = doc(db, "quizProgress", token);
+      const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
         const data = docSnap.data();

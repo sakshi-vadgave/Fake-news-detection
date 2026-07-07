@@ -216,8 +216,6 @@ function generateDynamicFallback(text: string, title?: string, url?: string) {
 }
 
 export async function analyzeNewsContent(text: string, title?: string, url?: string) {
-  const ai = getGeminiClient();
-  
   const systemInstruction = 
     `You are an elite, objective, fact-checking and media intelligence system named "TruthLens AI".
     Evaluate the provided text and input metadata carefully. Run an exhaustive analysis on the authenticity, confidence, sources, credibility, emotional language, and structural claims.
@@ -241,6 +239,7 @@ export async function analyzeNewsContent(text: string, title?: string, url?: str
   `;
 
   try {
+    const ai = getGeminiClient();
     const textResult = await callGeminiWithFallback(async (modelName) => {
       const response = await ai.models.generateContent({
         model: modelName,
@@ -386,8 +385,6 @@ export async function getChatbotResponse(
   message: string,
   lastAnalysisResult?: any
 ) {
-  const ai = getGeminiClient();
-
   const formattedHistory = history.map(h => ({
     role: h.role,
     parts: [{ text: h.text }]
@@ -408,6 +405,7 @@ export async function getChatbotResponse(
     You can answer specific questions explaining this analysis, why the AI marked certain aspects as Suspicious, what recommendations apply, or help draft an appropriate factual rebuttal to post in reply to this fake news.` : ""}`;
 
   try {
+    const ai = getGeminiClient();
     return await callGeminiWithFallback(async (modelName) => {
       const chat = ai.chats.create({
         model: modelName,
@@ -582,8 +580,6 @@ Is there a specific clause or topic you would like me to help verify?`;
 }
 
 export async function extractTextFromImage(imageBase64: string, mimeType: string): Promise<string> {
-  const ai = getGeminiClient();
-
   let cleanBase64 = imageBase64;
   let resolvedMimeType = mimeType || "image/jpeg";
 
@@ -616,6 +612,7 @@ export async function extractTextFromImage(imageBase64: string, mimeType: string
   `;
 
   try {
+    const ai = getGeminiClient();
     return await callGeminiWithFallback(async (modelName) => {
       const response = await ai.models.generateContent({
         model: modelName,
@@ -631,8 +628,6 @@ export async function extractTextFromImage(imageBase64: string, mimeType: string
 }
 
 export async function generateNewsFeedAudit(headline: string, description: string, url: string, source: string) {
-  const ai = getGeminiClient();
-
   const systemInstruction = 
     `You are the TruthLens AI Truth Guard. Your objective is to audit news articles.
     Produce an objective assessment consisting of:
@@ -650,6 +645,7 @@ export async function generateNewsFeedAudit(headline: string, description: strin
   `;
 
   try {
+    const ai = getGeminiClient();
     const textResult = await callGeminiWithFallback(async (modelName) => {
       const response = await ai.models.generateContent({
         model: modelName,

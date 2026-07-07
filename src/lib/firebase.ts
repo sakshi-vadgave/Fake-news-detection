@@ -1,21 +1,30 @@
+/// <reference types="vite/client" />
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// Construct config dynamically using environment variables to keep secrets safe in Git/GitHub
-const dynamicConfig = {
-  apiKey: (import.meta as any).env.VITE_FIREBASE_API_KEY || firebaseConfig.apiKey,
-  authDomain: (import.meta as any).env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain,
-  projectId: (import.meta as any).env.VITE_FIREBASE_PROJECT_ID || firebaseConfig.projectId,
-  storageBucket: (import.meta as any).env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfig.storageBucket,
-  messagingSenderId: (import.meta as any).env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfig.messagingSenderId,
-  appId: (import.meta as any).env.VITE_FIREBASE_APP_ID || firebaseConfig.appId,
-  firestoreDatabaseId: (import.meta as any).env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || firebaseConfig.firestoreDatabaseId,
+// Helper to clean environment and config string values, removing any surrounding quotes or placeholder text
+const cleanValue = (val: any): string => {
+  if (!val || typeof val !== 'string') return '';
+  const cleaned = val.replace(/^["']|["']$/g, '').trim();
+  if (cleaned.includes("PLACEHOLDER")) return '';
+  return cleaned;
 };
 
-const hasValidConfig = dynamicConfig.apiKey && dynamicConfig.apiKey !== "PLACEHOLDER_API_KEY";
+// Construct config dynamically using environment variables to keep secrets safe in Git/GitHub
+const dynamicConfig = {
+  apiKey: cleanValue(import.meta.env.VITE_FIREBASE_API_KEY) || cleanValue(firebaseConfig.apiKey),
+  authDomain: cleanValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || cleanValue(firebaseConfig.authDomain),
+  projectId: cleanValue(import.meta.env.VITE_FIREBASE_PROJECT_ID) || cleanValue(firebaseConfig.projectId),
+  storageBucket: cleanValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) || cleanValue(firebaseConfig.storageBucket),
+  messagingSenderId: cleanValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) || cleanValue(firebaseConfig.messagingSenderId),
+  appId: cleanValue(import.meta.env.VITE_FIREBASE_APP_ID) || cleanValue(firebaseConfig.appId),
+  firestoreDatabaseId: cleanValue(import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID) || cleanValue(firebaseConfig.firestoreDatabaseId),
+};
+
+const hasValidConfig = !!dynamicConfig.apiKey;
 
 if (!hasValidConfig) {
   console.warn(
@@ -26,11 +35,11 @@ if (!hasValidConfig) {
 
 const app = initializeApp({
   apiKey: hasValidConfig ? dynamicConfig.apiKey : "PLACEHOLDER_KEY",
-  authDomain: dynamicConfig.authDomain,
-  projectId: dynamicConfig.projectId,
-  storageBucket: dynamicConfig.storageBucket,
-  messagingSenderId: dynamicConfig.messagingSenderId,
-  appId: dynamicConfig.appId,
+  authDomain: dynamicConfig.authDomain || undefined,
+  projectId: dynamicConfig.projectId || undefined,
+  storageBucket: dynamicConfig.storageBucket || undefined,
+  messagingSenderId: dynamicConfig.messagingSenderId || undefined,
+  appId: dynamicConfig.appId || undefined,
 });
 
 // CRITICAL: Initialize Firestore with persistent storage and force long-polling for environments with restricted WebSocket capabilities
@@ -39,7 +48,7 @@ export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()
   })
-}, dynamicConfig.firestoreDatabaseId);
+}, dynamicConfig.firestoreDatabaseId || undefined);
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);

@@ -62,6 +62,7 @@ export default function App() {
             ...profileData
           });
           setToken(firebaseUser.uid);
+          localStorage.removeItem("truthlens_demo_user");
         } catch (e) {
           console.error("Firestore profile synchronization error:", e);
           setUser({
@@ -71,10 +72,23 @@ export default function App() {
             createdAt: new Date().toISOString()
           });
           setToken(firebaseUser.uid);
+          localStorage.removeItem("truthlens_demo_user");
         }
       } else {
-        setUser(null);
-        setToken(null);
+        const demoSession = localStorage.getItem("truthlens_demo_user");
+        if (demoSession) {
+          try {
+            const parsed = JSON.parse(demoSession);
+            setUser(parsed);
+            setToken(parsed.id);
+          } catch (e) {
+            setUser(null);
+            setToken(null);
+          }
+        } else {
+          setUser(null);
+          setToken(null);
+        }
       }
       setAppReady(true);
     });
@@ -82,7 +96,14 @@ export default function App() {
   }, []);
 
   const handleLoginSuccess = (loggedInUser: any, sessionToken: string) => {
-    // Session token would be active Firebase User UID
+    setUser(loggedInUser);
+    setToken(sessionToken);
+    if (sessionToken.startsWith("demo-")) {
+      localStorage.setItem("truthlens_demo_user", JSON.stringify(loggedInUser));
+    } else {
+      localStorage.removeItem("truthlens_demo_user");
+    }
+
     if (loggedInUser.email === "admin@truthlens.ai" || loggedInUser.email === "vadgavesakshi8@gmail.com") {
       setTab("admin");
     } else {
@@ -92,12 +113,16 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem("truthlens_demo_user");
       await signOut(auth);
       setUser(null);
       setToken(null);
       setTab("landing");
     } catch (e) {
       console.error("Failed to sign out:", e);
+      setUser(null);
+      setToken(null);
+      setTab("landing");
     }
   };
 
@@ -140,6 +165,7 @@ export default function App() {
             initialUrl={prefillNews?.url}
             autoAnalyze={prefillNews?.autoAnalyze}
             onClearPrefill={() => setPrefillNews(null)}
+            openLoginModal={() => setLoginModalOpen(true)}
           />
         );
       case "trends":

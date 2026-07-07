@@ -258,6 +258,28 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
           <span>Continue with Google</span>
         </button>
 
+        {/* Guest / Demo Auditor Access */}
+        <button
+          type="button"
+          onClick={() => {
+            onSuccess(
+              {
+                id: "demo-auditor",
+                name: "Demo Auditor",
+                email: "vadgavesakshi8@gmail.com",
+                createdAt: new Date().toISOString()
+              },
+              "demo-auditor"
+            );
+            onClose();
+          }}
+          disabled={loading}
+          className="w-full mt-2.5 py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-sm active:scale-[0.98] text-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+        >
+          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 animate-pulse" />
+          <span>Access as Guest Auditor</span>
+        </button>
+
         {/* Footer Toggle */}
         <div className="text-center mt-6 pt-5 border-t border-slate-100">
           <p className="text-xs text-slate-500">

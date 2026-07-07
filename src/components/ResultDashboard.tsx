@@ -59,6 +59,24 @@ export default function ResultDashboard({ result, onReset, token }: ResultProps)
   const toggleFavorite = async () => {
     if (!token || result.id.startsWith("guest-")) return;
     setLoadingFav(true);
+    if (token.startsWith("demo-")) {
+      try {
+        const localHistory = localStorage.getItem("truthlens_demo_history");
+        if (localHistory) {
+          const list = JSON.parse(localHistory);
+          const updated = list.map((item: any) => 
+            item.id === result.id ? { ...item, isFavorite: !favorite } : item
+          );
+          localStorage.setItem("truthlens_demo_history", JSON.stringify(updated));
+        }
+        setFavorite(!favorite);
+      } catch (e) {
+        console.error("Local favorite toggle failed:", e);
+      } finally {
+        setLoadingFav(false);
+      }
+      return;
+    }
     try {
       const docRef = doc(db, "analysisHistory", result.id);
       await updateDoc(docRef, { isFavorite: !favorite });

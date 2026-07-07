@@ -22,6 +22,21 @@ export default function AnalysisHistory({ onReopen, token, setTab }: AnalysisHis
   const fetchHistory = async () => {
     setLoading(true);
     setError("");
+    if (token.startsWith("demo-")) {
+      try {
+        const localHistory = localStorage.getItem("truthlens_demo_history");
+        if (localHistory) {
+          setHistory(JSON.parse(localHistory));
+        } else {
+          setHistory([]);
+        }
+      } catch (err: any) {
+        setError("Could not retrieve local guest history.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     try {
       const q = query(
         collection(db, "analysisHistory"),
@@ -53,6 +68,15 @@ export default function AnalysisHistory({ onReopen, token, setTab }: AnalysisHis
     const currentItem = history.find((item) => item.id === id);
     if (!currentItem) return;
 
+    if (token.startsWith("demo-")) {
+      const updatedHistory = history.map((item) =>
+        item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
+      );
+      setHistory(updatedHistory);
+      localStorage.setItem("truthlens_demo_history", JSON.stringify(updatedHistory));
+      return;
+    }
+
     try {
       const docRef = doc(db, "analysisHistory", id);
       await updateDoc(docRef, { isFavorite: !currentItem.isFavorite });
@@ -69,6 +93,13 @@ export default function AnalysisHistory({ onReopen, token, setTab }: AnalysisHis
     e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this news audit transcript permanently?")) return;
     
+    if (token.startsWith("demo-")) {
+      const updatedHistory = history.filter((item) => item.id !== id);
+      setHistory(updatedHistory);
+      localStorage.setItem("truthlens_demo_history", JSON.stringify(updatedHistory));
+      return;
+    }
+
     try {
       const docRef = doc(db, "analysisHistory", id);
       await deleteDoc(docRef);
