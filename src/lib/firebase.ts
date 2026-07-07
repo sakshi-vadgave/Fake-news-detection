@@ -3,36 +3,34 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-// Safely load the firebase config file using glob pattern to prevent rollup build failures if the file is missing in deployment pipelines
-const configFiles = import.meta.glob('../../firebase-applet-config.json', { eager: true });
-const firebaseConfig = (Object.values(configFiles)[0] as any)?.default || {};
+// Retrieve the dynamic Firebase configuration served by the server from window.FIREBASE_CONFIG
+const globalConfig = (typeof window !== "undefined" ? (window as any).FIREBASE_CONFIG : null) || {};
 
 // Helper to clean environment and config string values, removing any surrounding quotes or placeholder text
 const cleanValue = (val: any): string => {
   if (!val || typeof val !== 'string') return '';
   const cleaned = val.replace(/^["']|["']$/g, '').trim();
   if (cleaned.includes("PLACEHOLDER")) return '';
-  if (cleaned === "AIzaSyBkxeHp9vI72ZOTMWBMwXLHcvG15T5wr5s" || cleaned === "AIzaSyDQQ-kBUfWKTCmGWY8ULvH22R3F7qZV5Y8") return ''; // Explicitly ignore the known expired keys
   return cleaned;
 };
 
-// Construct config dynamically, prioritizing the freshly provisioned firebase-applet-config.json, falling back to environment variables
+// Construct config dynamically using the server-served runtime configuration
 const dynamicConfig = {
-  apiKey: cleanValue(firebaseConfig.apiKey) || cleanValue(import.meta.env.VITE_FIREBASE_API_KEY),
-  authDomain: cleanValue(firebaseConfig.authDomain) || cleanValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
-  projectId: cleanValue(firebaseConfig.projectId) || cleanValue(import.meta.env.VITE_FIREBASE_PROJECT_ID),
-  storageBucket: cleanValue(firebaseConfig.storageBucket) || cleanValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
-  messagingSenderId: cleanValue(firebaseConfig.messagingSenderId) || cleanValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
-  appId: cleanValue(firebaseConfig.appId) || cleanValue(import.meta.env.VITE_FIREBASE_APP_ID),
-  firestoreDatabaseId: cleanValue(firebaseConfig.firestoreDatabaseId) || cleanValue(import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID),
+  apiKey: cleanValue(globalConfig.apiKey),
+  authDomain: cleanValue(globalConfig.authDomain),
+  projectId: cleanValue(globalConfig.projectId),
+  storageBucket: cleanValue(globalConfig.storageBucket),
+  messagingSenderId: cleanValue(globalConfig.messagingSenderId),
+  appId: cleanValue(globalConfig.appId),
+  firestoreDatabaseId: cleanValue(globalConfig.firestoreDatabaseId),
 };
 
 const hasValidConfig = !!dynamicConfig.apiKey;
 
 if (!hasValidConfig) {
   console.warn(
-    "[Firebase] WARNING: Firebase Client Web API Key is missing or using placeholder values. " +
-    "Verify your environment variables are set correctly."
+    "[Firebase] WARNING: Dynamic Firebase Client Web API Key is missing. " +
+    "Verify your server-side firebase-applet-config.json and env variables are set correctly."
   );
 }
 
