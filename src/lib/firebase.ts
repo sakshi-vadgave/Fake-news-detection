@@ -12,18 +12,19 @@ const cleanValue = (val: any): string => {
   if (!val || typeof val !== 'string') return '';
   const cleaned = val.replace(/^["']|["']$/g, '').trim();
   if (cleaned.includes("PLACEHOLDER")) return '';
+  if (cleaned === "AIzaSyBkxeHp9vI72ZOTMWBMwXLHcvG15T5wr5s" || cleaned === "AIzaSyDQQ-kBUfWKTCmGWY8ULvH22R3F7qZV5Y8") return ''; // Explicitly ignore the known expired keys
   return cleaned;
 };
 
-// Construct config dynamically using environment variables to keep secrets safe in Git/GitHub
+// Construct config dynamically, prioritizing the freshly provisioned firebase-applet-config.json, falling back to environment variables
 const dynamicConfig = {
-  apiKey: cleanValue(import.meta.env.VITE_FIREBASE_API_KEY) || cleanValue(firebaseConfig.apiKey),
-  authDomain: cleanValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || cleanValue(firebaseConfig.authDomain),
-  projectId: cleanValue(import.meta.env.VITE_FIREBASE_PROJECT_ID) || cleanValue(firebaseConfig.projectId),
-  storageBucket: cleanValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) || cleanValue(firebaseConfig.storageBucket),
-  messagingSenderId: cleanValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) || cleanValue(firebaseConfig.messagingSenderId),
-  appId: cleanValue(import.meta.env.VITE_FIREBASE_APP_ID) || cleanValue(firebaseConfig.appId),
-  firestoreDatabaseId: cleanValue(import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID) || cleanValue(firebaseConfig.firestoreDatabaseId),
+  apiKey: cleanValue(firebaseConfig.apiKey) || cleanValue(import.meta.env.VITE_FIREBASE_API_KEY),
+  authDomain: cleanValue(firebaseConfig.authDomain) || cleanValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+  projectId: cleanValue(firebaseConfig.projectId) || cleanValue(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket: cleanValue(firebaseConfig.storageBucket) || cleanValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: cleanValue(firebaseConfig.messagingSenderId) || cleanValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId: cleanValue(firebaseConfig.appId) || cleanValue(import.meta.env.VITE_FIREBASE_APP_ID),
+  firestoreDatabaseId: cleanValue(firebaseConfig.firestoreDatabaseId) || cleanValue(import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID),
 };
 
 const hasValidConfig = !!dynamicConfig.apiKey;
