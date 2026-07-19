@@ -3,6 +3,8 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import buildTimeFileConfig from '../../firebase-applet-config.json';
+
 // Retrieve the dynamic Firebase configuration served by the server from window.FIREBASE_CONFIG
 let globalConfig = (typeof window !== "undefined" ? (window as any).FIREBASE_CONFIG : null);
 
@@ -24,18 +26,6 @@ if (typeof window !== "undefined" && !globalConfig) {
   } catch (err) {
     // Silent fallback
   }
-}
-
-// 2. Fallback: Try to read from build-time Vite glob of the firebase-applet-config.json file if available
-let buildTimeFileConfig: any = {};
-try {
-  const configFiles = import.meta.glob('../../firebase-applet-config.json', { eager: true });
-  const matchedFile = Object.values(configFiles)[0] as any;
-  if (matchedFile && matchedFile.default) {
-    buildTimeFileConfig = matchedFile.default;
-  }
-} catch (e) {
-  // Silent fallback
 }
 
 // Helper to clean environment and config string values, removing any surrounding quotes or placeholder text
